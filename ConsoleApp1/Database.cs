@@ -1,4 +1,4 @@
-﻿class Database
+﻿ class Database
 {
     public Dictionary<string, Table> Tables { get; set; }
 

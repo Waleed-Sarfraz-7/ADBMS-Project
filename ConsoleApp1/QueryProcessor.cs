@@ -101,7 +101,8 @@ class QueryProcessor
 
         if (transactionManager.IsInTransaction())
         {
-            transactionManager.LogOperation(tableName, row);
+            transactionManager.LogOperation("insert",tableName,null, new List<Dictionary<string, string>> { row }
+);
         }
 
         database.Tables[tableName].InsertRow(row);
@@ -129,43 +130,66 @@ class QueryProcessor
 
     private void HandleUpdateQuery(string[] parts)
     {
-        if (parts.Length < 6 || parts[1].ToLower() != "set")
+        if (parts.Length < 6 || !parts.Contains("set") || !parts.Contains("where"))
         {
             Console.WriteLine("Syntax Error: Use UPDATE <table_name> SET column=value WHERE column=value");
             return;
         }
 
-        string tableName = parts[0];
+        string tableName = parts[1].ToLower();
         if (!database.Tables.ContainsKey(tableName))
         {
             Console.WriteLine($"Table '{tableName}' does not exist.");
             return;
         }
 
-        string[] setClause = parts[2].Split('=');
-        string setColumn = setClause[0].Trim();
-        string setValue = setClause[1].Trim();
+        var table = database.Tables[tableName];
 
-        string[] whereClause = parts[4].Split('=');
-        string whereColumn = whereClause[0].Trim();
-        string whereValue = whereClause[1].Trim();
+        int setIndex = Array.FindIndex(parts, p => p.ToLower() == "set");
+        int whereIndex = Array.FindIndex(parts, p => p.ToLower() == "where");
+
+        string[] setPair = parts[setIndex + 1].Split('=');
+        if (setPair.Length != 2)
+        {
+            Console.WriteLine("Invalid SET clause.");
+            return;
+        }
+
+        string setCol = setPair[0].Trim();
+        string setVal = setPair[1].Trim();
+
+        string[] wherePair = parts[whereIndex + 1].Split('=');
+        if (wherePair.Length != 2)
+        {
+            Console.WriteLine("Invalid WHERE clause.");
+            return;
+        }
+
+        string whereCol = wherePair[0].Trim();
+        string whereVal = wherePair[1].Trim();
+
+        var matchedRows = table.Rows.Where(r => r.ContainsKey(whereCol) && r[whereCol] == whereVal).ToList();
+        if (matchedRows.Count == 0)
+        {
+            Console.WriteLine("No matching rows found to update.");
+            return;
+        }
 
         if (transactionManager.IsInTransaction())
         {
-            Dictionary<string, string> oldRow = database.Tables[tableName].Rows.FirstOrDefault(r => r[whereColumn] == whereValue);
-            if (oldRow != null)
-            {
-                transactionManager.LogOperation(tableName, oldRow);
-            }
+            var beforeRows = matchedRows.Select(r => new Dictionary<string, string>(r)).ToList();
+            var afterRows = matchedRows.Select(r => { var copy = new Dictionary<string, string>(r); copy[setCol] = setVal; return copy; }).ToList();
+            transactionManager.LogOperation("update", tableName, beforeRows, afterRows);
         }
 
-        database.Tables[tableName].Rows
-            .Where(r => r[whereColumn] == whereValue)
-            .ToList()
-            .ForEach(r => r[setColumn] = setValue);
+        foreach (var row in matchedRows)
+        {
+            row[setCol] = setVal;
+        }
 
-        Console.WriteLine("Update successful.");
+        Console.WriteLine($"{matchedRows.Count} row(s) updated successfully in '{tableName}'.");
     }
+
 
     private void HandleDeleteQuery(string[] parts)
     {
@@ -186,19 +210,24 @@ class QueryProcessor
         string whereColumn = whereClause[0].Trim();
         string whereValue = whereClause[1].Trim();
 
-        if (transactionManager.IsInTransaction())
-        {
-            List<Dictionary<string, string>> rowsToDelete = database.Tables[tableName].Rows
-                .Where(r => r[whereColumn] == whereValue)
-                .ToList();
+        var rowsToDelete = database.Tables[tableName].Rows
+            .Where(r => r.ContainsKey(whereColumn) && r[whereColumn] == whereValue)
+            .ToList();
 
-            foreach (var row in rowsToDelete)
-            {
-                transactionManager.LogOperation(tableName, row);
-            }
+        if (rowsToDelete.Count == 0)
+        {
+            Console.WriteLine("No matching rows found to delete.");
+            return;
         }
 
-        database.Tables[tableName].Rows.RemoveAll(r => r[whereColumn] == whereValue);
-        Console.WriteLine("Row(s) deleted successfully.");
+        if (transactionManager.IsInTransaction())
+        {
+            var beforeRows = rowsToDelete.Select(r => new Dictionary<string, string>(r)).ToList();
+            transactionManager.LogOperation("delete", tableName, beforeRows, null);
+        }
+
+        database.Tables[tableName].Rows.RemoveAll(r => r.ContainsKey(whereColumn) && r[whereColumn] == whereValue);
+        Console.WriteLine($"{rowsToDelete.Count} row(s) deleted successfully from '{tableName}'.");
     }
+
 }

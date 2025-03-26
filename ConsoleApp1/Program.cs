@@ -12,8 +12,13 @@
             string query = Console.ReadLine();
             if (query.ToLower() == "exit") break;
             qp.ExecuteQuery(query);
+            if (!tm.IsInTransaction())
+            {
+                StorageManager.SaveDatabase(db);
+            }
+            
         }
+        
 
-        StorageManager.SaveDatabase(db);
     }
 }

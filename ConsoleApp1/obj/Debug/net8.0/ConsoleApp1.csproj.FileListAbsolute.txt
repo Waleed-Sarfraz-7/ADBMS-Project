@@ -40,3 +40,4 @@ F:\Semester 4\DB Project\C#\ConsoleApp1\bin\Debug\net8.0\runtimes\win\lib\netsta
 F:\Semester 4\DB Project\C#\ConsoleApp1\bin\Debug\net8.0\runtimes\win\lib\netcoreapp3.0\System.Windows.Extensions.dll
 F:\Semester 4\DB Project\C#\ConsoleApp1\obj\Debug\net8.0\ConsoleApp1.csproj.AssemblyReference.cache
 F:\Semester 4\DB Project\C#\ConsoleApp1\obj\Debug\net8.0\ConsoleA.CB28C8CC.Up2Date
+F:\Semester 4\DB Project\C#\ConsoleApp1\obj\Debug\net8.0\ConsoleApp1.sourcelink.json

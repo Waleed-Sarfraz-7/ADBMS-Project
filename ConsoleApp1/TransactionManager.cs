@@ -1,11 +1,13 @@
-﻿class TransactionManager
+﻿ class TransactionManager
 {
-    private Stack<List<(string, Dictionary<string, string>)>> transactionStack;
+    private Stack<List<(string Operation, string TableName, List<Dictionary<string, string>> Before, List<Dictionary<string, string>> After)>> transactionStack;
     private bool inTransaction;
+
+    public bool IsInTransaction() => inTransaction;
 
     public TransactionManager()
     {
-        transactionStack = new Stack<List<(string, Dictionary<string, string>)>>();
+        transactionStack = new Stack<List<(string, string, List<Dictionary<string, string>>, List<Dictionary<string, string>>)>>();
         inTransaction = false;
     }
 
@@ -18,16 +20,14 @@
         }
 
         inTransaction = true;
-        transactionStack.Push(new List<(string, Dictionary<string, string>)>());
+        transactionStack.Push(new List<(string, string, List<Dictionary<string, string>>, List<Dictionary<string, string>>)>());
         Console.WriteLine("Transaction Started...");
     }
 
-    public void LogOperation(string tableName, Dictionary<string, string> row)
+    public void LogOperation(string operation, string tableName, List<Dictionary<string, string>> before, List<Dictionary<string, string>> after)
     {
-        if (inTransaction)
-        {
-            transactionStack.Peek().Add((tableName, new Dictionary<string, string>(row)));
-        }
+        if (!inTransaction) return;
+        transactionStack.Peek().Add((operation, tableName, before, after));
     }
 
     public void CommitTransaction()
@@ -38,9 +38,9 @@
             return;
         }
 
-        transactionStack.Pop(); // Clear transaction log
+        transactionStack.Pop();
         inTransaction = false;
-        Console.WriteLine("Transaction Committed.");
+        Console.WriteLine("Transaction Committed Successfully.");
     }
 
     public void RollbackTransaction(Database database)
@@ -51,23 +51,51 @@
             return;
         }
 
-        List<(string, Dictionary<string, string>)> operations = transactionStack.Pop();
-        foreach (var operation in operations)
-        {
-            string tableName = operation.Item1;
-            Dictionary<string, string> row = operation.Item2;
+        var operations = transactionStack.Pop();
+        operations.Reverse();
 
-            if (database.Tables.ContainsKey(tableName))
+        foreach (var (operation, tableName, beforeList, afterList) in operations)
+        {
+            if (!database.Tables.ContainsKey(tableName)) continue;
+
+            var table = database.Tables[tableName];
+
+            if (operation == "insert")
             {
-                database.Tables[tableName].Rows.RemoveAll(r => r["ID"] == row["ID"]);
+                // remove inserted rows
+                foreach (var afterRow in afterList)
+                    table.Rows.RemoveAll(r => AreRowsEqual(r, afterRow));
+            }
+            else if (operation == "delete")
+            {
+                // re-insert deleted rows
+                table.Rows.AddRange(beforeList);
+            }
+            else if (operation == "update")
+            {
+                // revert all updated rows
+                foreach (var i in Enumerable.Range(0, beforeList.Count))
+                {
+                    var oldRow = beforeList[i];
+                    var newRow = afterList[i];
+                    var rowToUpdate = table.Rows.FirstOrDefault(r => AreRowsEqual(r, newRow));
+                    if (rowToUpdate != null)
+                    {
+                        foreach (var key in oldRow.Keys)
+                            rowToUpdate[key] = oldRow[key];
+                    }
+                }
             }
         }
 
         inTransaction = false;
-        Console.WriteLine("Transaction Rolled Back.");
+        Console.WriteLine("Transaction Rolled Back Successfully.");
     }
-    public bool IsInTransaction()
+
+    private bool AreRowsEqual(Dictionary<string, string> r1, Dictionary<string, string> r2)
     {
-        return inTransaction;
+        return r1.Count == r2.Count && r1.All(kv => r2.ContainsKey(kv.Key) && r2[kv.Key] == kv.Value);
     }
+
+
 }
