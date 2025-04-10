@@ -1,32 +1,48 @@
-﻿using System.IO;
+﻿using ConsoleApp1;
 using System.Text.Json;
 
 class StorageManager
 {
-    private const string DataPath = "data";
+    private const string RootDataPath = "data";
 
-    public static void SaveDatabase(Database db)
+    public static void SaveDBMS(DBMS dbms)
     {
-        Directory.CreateDirectory(DataPath);
-        foreach (var table in db.Tables)
+        Directory.CreateDirectory(RootDataPath);
+        foreach (var dbEntry in dbms.Databases)
         {
-            string json = JsonSerializer.Serialize(table.Value);
-            File.WriteAllText($"{DataPath}/{table.Key}.json", json);
+            string dbPath = Path.Combine(RootDataPath, dbEntry.Key);
+            Directory.CreateDirectory(dbPath);
+
+            foreach (var table in dbEntry.Value.Tables)
+            {
+                string json = JsonSerializer.Serialize(table.Value);
+                File.WriteAllText($"{dbPath}/{table.Key}.json", json);
+            }
         }
     }
 
-    public static Database LoadDatabase()
+    public static DBMS LoadDBMS()
     {
-        Database db = new Database();
-        if (Directory.Exists(DataPath))
+        DBMS dbms = new DBMS();
+
+        if (Directory.Exists(RootDataPath))
         {
-            foreach (var file in Directory.GetFiles(DataPath, "*.json"))
+            foreach (var dbFolder in Directory.GetDirectories(RootDataPath))
             {
-                string json = File.ReadAllText(file);
-                Table table = JsonSerializer.Deserialize<Table>(json);
-                db.Tables[table.Name] = table;
+                string dbName = Path.GetFileName(dbFolder);
+                Database db = new Database(dbName);
+
+                foreach (var file in Directory.GetFiles(dbFolder, "*.json"))
+                {
+                    string json = File.ReadAllText(file);
+                    Table table = JsonSerializer.Deserialize<Table>(json);
+                    db.Tables[table.Name] = table;
+                }
+
+                dbms.Databases[dbName] = db;
             }
         }
-        return db;
+
+        return dbms;
     }
 }

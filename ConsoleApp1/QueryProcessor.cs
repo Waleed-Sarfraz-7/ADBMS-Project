@@ -1,16 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using ConsoleApp1;
 
 class QueryProcessor
 {
     private Database database;
     private TransactionManager transactionManager;
-
-    public QueryProcessor(Database db, TransactionManager tm)
+    private readonly DBMS dbms;
+    public QueryProcessor( TransactionManager tm, DBMS dBMS)
     {
-        database = db;
         transactionManager = tm;
+        dbms = dBMS;
     }
 
     public void ExecuteQuery(string query)
@@ -51,25 +52,98 @@ class QueryProcessor
             case "rollback":
                 transactionManager.RollbackTransaction(database);
                 break;
+            case "use":
+                HandleUseDatabase(parts);
+                break;
+            
 
             default:
                 Console.WriteLine("Invalid query.");
                 break;
         }
     }
-
-    private void HandleCreateQuery(string[] parts)
+    private void HandleUseDatabase(string[] parts)
     {
-        if (parts.Length < 4 || parts[1].ToLower() != "table")
+        if (parts.Length != 2)
         {
-            Console.WriteLine("Syntax Error: Use CREATE TABLE <table_name> (column1, column2, ...)");
+            Console.WriteLine("Usage: USE <database_name>");
             return;
         }
 
-        string tableName = parts[2];
-        List<string> columns = parts.Skip(3).Select(col => col.Trim('(', ')', ',')).ToList();
-        database.CreateTable(tableName, columns);
-        Console.WriteLine($"Table '{tableName}' created successfully.");
+        string dbName = parts[1].ToLower();
+        if (dbms.UseDatabase(dbName))
+        {
+           
+            database = dbms.GetCurrentDatabase();
+            Console.WriteLine($"Switched to database '{dbName}'.");
+        }
+            
+        else
+            Console.WriteLine($"Database '{dbName}' not found.");
+    }
+
+    private void HandleCreateQuery(string[] parts)
+    {
+        if (parts.Length < 3)
+        {
+            Console.WriteLine("Syntax Error: Incomplete CREATE command.");
+            return;
+        }
+
+        string objectType = parts[1].ToLower();
+
+        if (objectType == "database")
+        {
+            if (parts.Length < 3)
+            {
+                Console.WriteLine("Syntax Error: Use CREATE DATABASE <database_name>");
+                return;
+            }
+
+            string dbName = parts[2].TrimEnd(';');
+            dbms.CreateDatabase(dbName); // Assuming 'dbms' is your DBMS instance
+            Console.WriteLine($"Database '{dbName}' created successfully.");
+        }
+        else if (objectType == "table")
+        {
+            if (parts.Length < 4)
+            {
+                Console.WriteLine("Syntax Error: Use CREATE TABLE <table_name> (column1, column2, ...)");
+                return;
+            }
+
+            string tableName = parts[2];
+            // Join everything after table name and extract columns from inside parentheses
+            string columnPart = string.Join(" ", parts.Skip(3));
+            int start = columnPart.IndexOf('(');
+            int end = columnPart.IndexOf(')');
+
+            if (start == -1 || end == -1 || end <= start)
+            {
+                Console.WriteLine("Syntax Error: Columns must be in parentheses.");
+                return;
+            }
+
+            string columnString = columnPart.Substring(start + 1, end - start - 1);
+            List<string> columns = columnString.Split(',').Select(col => col.Trim()).ToList();
+
+            if (database == null)
+            {
+                Console.WriteLine("No database selected. Use USE <database_name> before creating tables.");
+                return;
+            }
+
+            database.CreateTable(tableName, columns);
+            Console.WriteLine($"Table '{tableName}' created successfully in database '{database.Name}'.");
+        }
+        else
+        {
+            Console.WriteLine("Syntax Error: Unknown CREATE command. Use 'CREATE DATABASE' or 'CREATE TABLE'.");
+        }
+    }
+    public Database GetQPDatabase()
+    {
+        return database;
     }
 
     private void HandleInsertQuery(string[] parts)

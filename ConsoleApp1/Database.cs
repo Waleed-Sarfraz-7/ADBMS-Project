@@ -1,7 +1,13 @@
 ﻿ class Database
 {
     public Dictionary<string, Table> Tables { get; set; }
+    public string Name { get; set; }
 
+    public Database(string name)
+    {
+        Tables = new Dictionary<string, Table>();
+        Name = name;
+    }
     public Database()
     {
         Tables = new Dictionary<string, Table>();
