@@ -55,8 +55,7 @@
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAwAAAAxAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-03-22T21:40:32.746Z",
-              "IsPinned": true,
-              "EditorCaption": ""
+              "IsPinned": true
             },
             {
               "$type": "Document",
@@ -68,8 +67,7 @@
               "RelativeToolTip": "DBMS.cs",
               "ViewState": "AgIAAAYAAAAAAAAAAAAAAAwAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-04-09T17:09:41.146Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-04-09T17:09:41.146Z"
             },
             {
               "$type": "Document",
@@ -81,8 +79,7 @@
               "RelativeToolTip": "QueryProcessor.cs",
               "ViewState": "AgIAAIUAAAAAAAAAAAAkwJEAAAAYAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-03-22T21:40:53.424Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-03-22T21:40:53.424Z"
             },
             {
               "$type": "Document",
@@ -94,8 +91,7 @@
               "RelativeToolTip": "Table.cs",
               "ViewState": "AgIAAAMAAAAAAAAAAAAcwBIAAAAeAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-03-22T21:39:48.407Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-03-22T21:39:48.407Z"
             },
             {
               "$type": "Document",
@@ -105,7 +101,7 @@
               "RelativeDocumentMoniker": "Program.cs",
               "ToolTip": "F:\\Semester 4\\DB Project\\C#\\ConsoleApp1\\Program.cs",
               "RelativeToolTip": "Program.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAqwAgAAAA5AAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAAAWAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-03-22T20:57:37.508Z",
               "EditorCaption": ""
@@ -132,8 +128,7 @@
               "RelativeToolTip": "StorageManager.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAABcAAAAhAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-03-24T12:35:27.578Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-03-24T12:35:27.578Z"
             },
             {
               "$type": "Document",
