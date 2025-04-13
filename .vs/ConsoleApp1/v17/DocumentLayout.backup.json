@@ -3,10 +3,6 @@
   "WorkspaceRootPath": "D:\\4th Semester\\ADBMS\\DbProject\\ADBMS-Project\\ConsoleApp1\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{3B691FE4-A229-430B-B93B-5956D27A8486}|ConsoleApp1.csproj|d:\\4th semester\\adbms\\dbproject\\adbms-project\\consoleapp1\\database.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{3B691FE4-A229-430B-B93B-5956D27A8486}|ConsoleApp1.csproj|solutionrelative:database.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{3B691FE4-A229-430B-B93B-5956D27A8486}|ConsoleApp1.csproj|d:\\4th semester\\adbms\\dbproject\\adbms-project\\consoleapp1\\table.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{3B691FE4-A229-430B-B93B-5956D27A8486}|ConsoleApp1.csproj|solutionrelative:table.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
@@ -15,20 +11,28 @@
       "RelativeMoniker": "D:0:0:{3B691FE4-A229-430B-B93B-5956D27A8486}|ConsoleApp1.csproj|solutionrelative:storagemanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{3B691FE4-A229-430B-B93B-5956D27A8486}|ConsoleApp1.csproj|d:\\4th semester\\adbms\\dbproject\\adbms-project\\consoleapp1\\column.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{3B691FE4-A229-430B-B93B-5956D27A8486}|ConsoleApp1.csproj|solutionrelative:column.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{3B691FE4-A229-430B-B93B-5956D27A8486}|ConsoleApp1.csproj|d:\\4th semester\\adbms\\dbproject\\adbms-project\\consoleapp1\\dbms.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3B691FE4-A229-430B-B93B-5956D27A8486}|ConsoleApp1.csproj|solutionrelative:dbms.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{3B691FE4-A229-430B-B93B-5956D27A8486}|ConsoleApp1.csproj|d:\\4th semester\\adbms\\dbproject\\adbms-project\\consoleapp1\\row.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{3B691FE4-A229-430B-B93B-5956D27A8486}|ConsoleApp1.csproj|solutionrelative:row.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{3B691FE4-A229-430B-B93B-5956D27A8486}|ConsoleApp1.csproj|d:\\4th semester\\adbms\\dbproject\\adbms-project\\consoleapp1\\dbms.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{3B691FE4-A229-430B-B93B-5956D27A8486}|ConsoleApp1.csproj|solutionrelative:dbms.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{3B691FE4-A229-430B-B93B-5956D27A8486}|ConsoleApp1.csproj|d:\\4th semester\\adbms\\dbproject\\adbms-project\\consoleapp1\\column.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3B691FE4-A229-430B-B93B-5956D27A8486}|ConsoleApp1.csproj|solutionrelative:column.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{3B691FE4-A229-430B-B93B-5956D27A8486}|ConsoleApp1.csproj|d:\\4th semester\\adbms\\dbproject\\adbms-project\\consoleapp1\\column_constraint.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{3B691FE4-A229-430B-B93B-5956D27A8486}|ConsoleApp1.csproj|solutionrelative:column_constraint.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3B691FE4-A229-430B-B93B-5956D27A8486}|ConsoleApp1.csproj|d:\\4th semester\\adbms\\dbproject\\adbms-project\\consoleapp1\\consoleapp1.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
+      "RelativeMoniker": "D:0:0:{3B691FE4-A229-430B-B93B-5956D27A8486}|ConsoleApp1.csproj|solutionrelative:consoleapp1.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3B691FE4-A229-430B-B93B-5956D27A8486}|ConsoleApp1.csproj|d:\\4th semester\\adbms\\dbproject\\adbms-project\\consoleapp1\\database.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3B691FE4-A229-430B-B93B-5956D27A8486}|ConsoleApp1.csproj|solutionrelative:database.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{3B691FE4-A229-430B-B93B-5956D27A8486}|ConsoleApp1.csproj|d:\\4th semester\\adbms\\dbproject\\adbms-project\\consoleapp1\\queryprocessor.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -37,10 +41,6 @@
     {
       "AbsoluteMoniker": "D:0:0:{3B691FE4-A229-430B-B93B-5956D27A8486}|ConsoleApp1.csproj|d:\\4th semester\\adbms\\dbproject\\adbms-project\\consoleapp1\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{3B691FE4-A229-430B-B93B-5956D27A8486}|ConsoleApp1.csproj|solutionrelative:program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{3B691FE4-A229-430B-B93B-5956D27A8486}|ConsoleApp1.csproj|d:\\4th semester\\adbms\\dbproject\\adbms-project\\consoleapp1\\consoleapp1.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
-      "RelativeMoniker": "D:0:0:{3B691FE4-A229-430B-B93B-5956D27A8486}|ConsoleApp1.csproj|solutionrelative:consoleapp1.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
     },
     {
       "AbsoluteMoniker": "D:0:0:{3B691FE4-A229-430B-B93B-5956D27A8486}|ConsoleApp1.csproj|d:\\4th semester\\adbms\\dbproject\\adbms-project\\consoleapp1\\transactionmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -54,17 +54,17 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 0,
+          "SelectedChildIndex": 7,
           "Children": [
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 7,
               "Title": "Database.cs",
               "DocumentMoniker": "D:\\4th Semester\\ADBMS\\DbProject\\ADBMS-Project\\ConsoleApp1\\Database.cs",
               "RelativeDocumentMoniker": "Database.cs",
               "ToolTip": "D:\\4th Semester\\ADBMS\\DbProject\\ADBMS-Project\\ConsoleApp1\\Database.cs",
               "RelativeToolTip": "Database.cs",
-              "ViewState": "AgIAAAcAAAAAMTMzMzMpwA8AAAAAAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA8AAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-03-22T21:40:32.746Z",
               "IsPinned": true,
@@ -72,31 +72,33 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 6,
+              "DocumentIndex": 5,
               "Title": "Column_Constraint.cs",
               "DocumentMoniker": "D:\\4th Semester\\ADBMS\\DbProject\\ADBMS-Project\\ConsoleApp1\\Column_Constraint.cs",
               "RelativeDocumentMoniker": "Column_Constraint.cs",
               "ToolTip": "D:\\4th Semester\\ADBMS\\DbProject\\ADBMS-Project\\ConsoleApp1\\Column_Constraint.cs",
               "RelativeToolTip": "Column_Constraint.cs",
-              "ViewState": "AgIAAA0AAAAADjMzMzPjvxEAAAAAAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABEAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-04-12T23:13:20.385Z"
+              "WhenOpened": "2025-04-12T23:13:20.385Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 4,
               "Title": "Column.cs",
               "DocumentMoniker": "D:\\4th Semester\\ADBMS\\DbProject\\ADBMS-Project\\ConsoleApp1\\Column.cs",
               "RelativeDocumentMoniker": "Column.cs",
               "ToolTip": "D:\\4th Semester\\ADBMS\\DbProject\\ADBMS-Project\\ConsoleApp1\\Column.cs",
               "RelativeToolTip": "Column.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAqwAgAAAARAAAAAAAAAA==",
+              "ViewState": "AgIAAA4AAABAMjMzM3MtwAgAAAARAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-04-12T20:04:38.479Z"
+              "WhenOpened": "2025-04-12T20:04:38.479Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 9,
+              "DocumentIndex": 6,
               "Title": "ConsoleApp1.csproj",
               "DocumentMoniker": "D:\\4th Semester\\ADBMS\\DbProject\\ADBMS-Project\\ConsoleApp1\\ConsoleApp1.csproj",
               "RelativeDocumentMoniker": "ConsoleApp1.csproj",
@@ -104,11 +106,12 @@
               "RelativeToolTip": "ConsoleApp1.csproj",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
-              "WhenOpened": "2025-04-12T20:04:18.127Z"
+              "WhenOpened": "2025-04-12T20:04:18.127Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 3,
               "Title": "Row.cs",
               "DocumentMoniker": "D:\\4th Semester\\ADBMS\\DbProject\\ADBMS-Project\\ConsoleApp1\\Row.cs",
               "RelativeDocumentMoniker": "Row.cs",
@@ -116,23 +119,25 @@
               "RelativeToolTip": "Row.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAoAAAAFAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-04-12T20:03:14.511Z"
+              "WhenOpened": "2025-04-12T20:03:14.511Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
+              "DocumentIndex": 2,
               "Title": "DBMS.cs",
               "DocumentMoniker": "D:\\4th Semester\\ADBMS\\DbProject\\ADBMS-Project\\ConsoleApp1\\DBMS.cs",
               "RelativeDocumentMoniker": "DBMS.cs",
               "ToolTip": "D:\\4th Semester\\ADBMS\\DbProject\\ADBMS-Project\\ConsoleApp1\\DBMS.cs",
               "RelativeToolTip": "DBMS.cs",
-              "ViewState": "AgIAAAoAAACwy8zMzMw7wAkAAAAFAAAAAAAAAA==",
+              "ViewState": "AgIAABEAAADAMjMzMzMDwAkAAAAFAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-04-09T17:09:41.146Z"
+              "WhenOpened": "2025-04-09T17:09:41.146Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 7,
+              "DocumentIndex": 8,
               "Title": "QueryProcessor.cs",
               "DocumentMoniker": "D:\\4th Semester\\ADBMS\\DbProject\\ADBMS-Project\\ConsoleApp1\\QueryProcessor.cs",
               "RelativeDocumentMoniker": "QueryProcessor.cs",
@@ -144,20 +149,20 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 0,
               "Title": "Table.cs",
               "DocumentMoniker": "D:\\4th Semester\\ADBMS\\DbProject\\ADBMS-Project\\ConsoleApp1\\Table.cs",
               "RelativeDocumentMoniker": "Table.cs",
               "ToolTip": "D:\\4th Semester\\ADBMS\\DbProject\\ADBMS-Project\\ConsoleApp1\\Table.cs",
               "RelativeToolTip": "Table.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAGQAAAAPAAAAAAAAAA==",
+              "ViewState": "AgIAAF8AAAAAXGZmZmb2v2QAAAAPAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-03-22T21:39:48.407Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 8,
+              "DocumentIndex": 9,
               "Title": "Program.cs",
               "DocumentMoniker": "D:\\4th Semester\\ADBMS\\DbProject\\ADBMS-Project\\ConsoleApp1\\Program.cs",
               "RelativeDocumentMoniker": "Program.cs",
@@ -169,7 +174,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 1,
               "Title": "StorageManager.cs",
               "DocumentMoniker": "D:\\4th Semester\\ADBMS\\DbProject\\ADBMS-Project\\ConsoleApp1\\StorageManager.cs",
               "RelativeDocumentMoniker": "StorageManager.cs",
