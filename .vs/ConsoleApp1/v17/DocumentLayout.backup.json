@@ -1,0 +1,207 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "D:\\4th Semester\\ADBMS\\DbProject\\ADBMS-Project\\ConsoleApp1\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{3B691FE4-A229-430B-B93B-5956D27A8486}|ConsoleApp1.csproj|d:\\4th semester\\adbms\\dbproject\\adbms-project\\consoleapp1\\storagemanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3B691FE4-A229-430B-B93B-5956D27A8486}|ConsoleApp1.csproj|solutionrelative:storagemanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3B691FE4-A229-430B-B93B-5956D27A8486}|ConsoleApp1.csproj|d:\\4th semester\\adbms\\dbproject\\adbms-project\\consoleapp1\\table.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3B691FE4-A229-430B-B93B-5956D27A8486}|ConsoleApp1.csproj|solutionrelative:table.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3B691FE4-A229-430B-B93B-5956D27A8486}|ConsoleApp1.csproj|d:\\4th semester\\adbms\\dbproject\\adbms-project\\consoleapp1\\column.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3B691FE4-A229-430B-B93B-5956D27A8486}|ConsoleApp1.csproj|solutionrelative:column.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3B691FE4-A229-430B-B93B-5956D27A8486}|ConsoleApp1.csproj|d:\\4th semester\\adbms\\dbproject\\adbms-project\\consoleapp1\\row.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3B691FE4-A229-430B-B93B-5956D27A8486}|ConsoleApp1.csproj|solutionrelative:row.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3B691FE4-A229-430B-B93B-5956D27A8486}|ConsoleApp1.csproj|d:\\4th semester\\adbms\\dbproject\\adbms-project\\consoleapp1\\dbms.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3B691FE4-A229-430B-B93B-5956D27A8486}|ConsoleApp1.csproj|solutionrelative:dbms.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3B691FE4-A229-430B-B93B-5956D27A8486}|ConsoleApp1.csproj|d:\\4th semester\\adbms\\dbproject\\adbms-project\\consoleapp1\\column_constraint.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3B691FE4-A229-430B-B93B-5956D27A8486}|ConsoleApp1.csproj|solutionrelative:column_constraint.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3B691FE4-A229-430B-B93B-5956D27A8486}|ConsoleApp1.csproj|d:\\4th semester\\adbms\\dbproject\\adbms-project\\consoleapp1\\queryprocessor.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3B691FE4-A229-430B-B93B-5956D27A8486}|ConsoleApp1.csproj|solutionrelative:queryprocessor.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3B691FE4-A229-430B-B93B-5956D27A8486}|ConsoleApp1.csproj|d:\\4th semester\\adbms\\dbproject\\adbms-project\\consoleapp1\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3B691FE4-A229-430B-B93B-5956D27A8486}|ConsoleApp1.csproj|solutionrelative:program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3B691FE4-A229-430B-B93B-5956D27A8486}|ConsoleApp1.csproj|d:\\4th semester\\adbms\\dbproject\\adbms-project\\consoleapp1\\consoleapp1.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
+      "RelativeMoniker": "D:0:0:{3B691FE4-A229-430B-B93B-5956D27A8486}|ConsoleApp1.csproj|solutionrelative:consoleapp1.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3B691FE4-A229-430B-B93B-5956D27A8486}|ConsoleApp1.csproj|d:\\4th semester\\adbms\\dbproject\\adbms-project\\consoleapp1\\database.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3B691FE4-A229-430B-B93B-5956D27A8486}|ConsoleApp1.csproj|solutionrelative:database.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3B691FE4-A229-430B-B93B-5956D27A8486}|ConsoleApp1.csproj|d:\\4th semester\\adbms\\dbproject\\adbms-project\\consoleapp1\\transactionmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3B691FE4-A229-430B-B93B-5956D27A8486}|ConsoleApp1.csproj|solutionrelative:transactionmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 9,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 9,
+              "Title": "Database.cs",
+              "DocumentMoniker": "D:\\4th Semester\\ADBMS\\DbProject\\ADBMS-Project\\ConsoleApp1\\Database.cs",
+              "RelativeDocumentMoniker": "Database.cs",
+              "ToolTip": "D:\\4th Semester\\ADBMS\\DbProject\\ADBMS-Project\\ConsoleApp1\\Database.cs",
+              "RelativeToolTip": "Database.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAUAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-03-22T21:40:32.746Z",
+              "IsPinned": true,
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "Column_Constraint.cs",
+              "DocumentMoniker": "D:\\4th Semester\\ADBMS\\DbProject\\ADBMS-Project\\ConsoleApp1\\Column_Constraint.cs",
+              "RelativeDocumentMoniker": "Column_Constraint.cs",
+              "ToolTip": "D:\\4th Semester\\ADBMS\\DbProject\\ADBMS-Project\\ConsoleApp1\\Column_Constraint.cs",
+              "RelativeToolTip": "Column_Constraint.cs",
+              "ViewState": "AgIAAA0AAAAADjMzMzPjvxEAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-04-12T23:13:20.385Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "Column.cs",
+              "DocumentMoniker": "D:\\4th Semester\\ADBMS\\DbProject\\ADBMS-Project\\ConsoleApp1\\Column.cs",
+              "RelativeDocumentMoniker": "Column.cs",
+              "ToolTip": "D:\\4th Semester\\ADBMS\\DbProject\\ADBMS-Project\\ConsoleApp1\\Column.cs",
+              "RelativeToolTip": "Column.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAqwAgAAAARAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-04-12T20:04:38.479Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 8,
+              "Title": "ConsoleApp1",
+              "DocumentMoniker": "D:\\4th Semester\\ADBMS\\DbProject\\ADBMS-Project\\ConsoleApp1\\ConsoleApp1.csproj",
+              "RelativeDocumentMoniker": "ConsoleApp1.csproj",
+              "ToolTip": "D:\\4th Semester\\ADBMS\\DbProject\\ADBMS-Project\\ConsoleApp1\\ConsoleApp1.csproj",
+              "RelativeToolTip": "ConsoleApp1.csproj",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
+              "WhenOpened": "2025-04-12T20:04:18.127Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "Row.cs",
+              "DocumentMoniker": "D:\\4th Semester\\ADBMS\\DbProject\\ADBMS-Project\\ConsoleApp1\\Row.cs",
+              "RelativeDocumentMoniker": "Row.cs",
+              "ToolTip": "D:\\4th Semester\\ADBMS\\DbProject\\ADBMS-Project\\ConsoleApp1\\Row.cs",
+              "RelativeToolTip": "Row.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAoAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-04-12T20:03:14.511Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "DBMS.cs",
+              "DocumentMoniker": "D:\\4th Semester\\ADBMS\\DbProject\\ADBMS-Project\\ConsoleApp1\\DBMS.cs",
+              "RelativeDocumentMoniker": "DBMS.cs",
+              "ToolTip": "D:\\4th Semester\\ADBMS\\DbProject\\ADBMS-Project\\ConsoleApp1\\DBMS.cs",
+              "RelativeToolTip": "DBMS.cs",
+              "ViewState": "AgIAAAoAAACwy8zMzMw7wAkAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-04-09T17:09:41.146Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "QueryProcessor.cs",
+              "DocumentMoniker": "D:\\4th Semester\\ADBMS\\DbProject\\ADBMS-Project\\ConsoleApp1\\QueryProcessor.cs",
+              "RelativeDocumentMoniker": "QueryProcessor.cs",
+              "ToolTip": "D:\\4th Semester\\ADBMS\\DbProject\\ADBMS-Project\\ConsoleApp1\\QueryProcessor.cs",
+              "RelativeToolTip": "QueryProcessor.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAIcAAAAsAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-03-22T21:40:53.424Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "Table.cs",
+              "DocumentMoniker": "D:\\4th Semester\\ADBMS\\DbProject\\ADBMS-Project\\ConsoleApp1\\Table.cs",
+              "RelativeDocumentMoniker": "Table.cs",
+              "ToolTip": "D:\\4th Semester\\ADBMS\\DbProject\\ADBMS-Project\\ConsoleApp1\\Table.cs",
+              "RelativeToolTip": "Table.cs",
+              "ViewState": "AgIAAC4AAACAYWZmZmYqwDUAAAAeAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-03-22T21:39:48.407Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "Program.cs",
+              "DocumentMoniker": "D:\\4th Semester\\ADBMS\\DbProject\\ADBMS-Project\\ConsoleApp1\\Program.cs",
+              "RelativeDocumentMoniker": "Program.cs",
+              "ToolTip": "D:\\4th Semester\\ADBMS\\DbProject\\ADBMS-Project\\ConsoleApp1\\Program.cs",
+              "RelativeToolTip": "Program.cs",
+              "ViewState": "AgIAABQAAADAzMzMzMwiwBkAAAALAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-03-22T20:57:37.508Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "StorageManager.cs",
+              "DocumentMoniker": "D:\\4th Semester\\ADBMS\\DbProject\\ADBMS-Project\\ConsoleApp1\\StorageManager.cs",
+              "RelativeDocumentMoniker": "StorageManager.cs",
+              "ToolTip": "D:\\4th Semester\\ADBMS\\DbProject\\ADBMS-Project\\ConsoleApp1\\StorageManager.cs",
+              "RelativeToolTip": "StorageManager.cs",
+              "ViewState": "AgIAACsAAADAoszMzMz8vzAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-03-24T12:35:27.578Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 10,
+              "Title": "TransactionManager.cs",
+              "DocumentMoniker": "D:\\4th Semester\\ADBMS\\DbProject\\ADBMS-Project\\ConsoleApp1\\TransactionManager.cs",
+              "RelativeDocumentMoniker": "TransactionManager.cs",
+              "ToolTip": "D:\\4th Semester\\ADBMS\\DbProject\\ADBMS-Project\\ConsoleApp1\\TransactionManager.cs",
+              "RelativeToolTip": "TransactionManager.cs",
+              "ViewState": "AgIAACAAAAAAAAAAAAAgwCUAAAATAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-03-22T21:41:13.127Z"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
