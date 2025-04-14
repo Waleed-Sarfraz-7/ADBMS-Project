@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using ConsoleApp1;
 
 class QueryProcessor
@@ -46,11 +47,11 @@ class QueryProcessor
                 break;
 
             case "commit":
-                transactionManager.CommitTransaction();
+               // transactionManager.CommitTransaction();
                 break;
 
             case "rollback":
-                transactionManager.RollbackTransaction(database);
+               // transactionManager.RollbackTransaction(database);
                 break;
             case "use":
                 HandleUseDatabase(parts);
@@ -108,12 +109,11 @@ class QueryProcessor
         {
             if (parts.Length < 4)
             {
-                Console.WriteLine("Syntax Error: Use CREATE TABLE <table_name> (column1, column2, ...)");
+                Console.WriteLine("Syntax Error: Use CREATE TABLE <table_name> (column_name TYPE [LENGTH] [CONSTRAINTS], ...)");
                 return;
             }
 
             string tableName = parts[2];
-            // Join everything after table name and extract columns from inside parentheses
             string columnPart = string.Join(" ", parts.Skip(3));
             int start = columnPart.IndexOf('(');
             int end = columnPart.IndexOf(')');
@@ -125,7 +125,126 @@ class QueryProcessor
             }
 
             string columnString = columnPart.Substring(start + 1, end - start - 1);
-            List<string> columns = columnString.Split(',').Select(col => col.Trim()).ToList();
+            string[] columnDefs = columnString.Split(',');
+
+            List<Column> columns = new List<Column>();
+
+            foreach (string rawCol in columnDefs)
+            {
+                string[] tokens = rawCol.Trim().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+
+                if (tokens.Length < 2)
+                {
+                    Console.WriteLine($"Syntax Error: Invalid column definition '{rawCol.Trim()}'");
+                    return;
+                }
+
+                string colName = tokens[0];
+                string dataType = tokens[1].ToUpper();
+                int? maxLength = null;
+                int index = 2;
+
+                if (dataType == "STRING" && tokens.Length > index && int.TryParse(tokens[index], out int len))
+                {
+                    maxLength = len;
+                    index++;
+                }
+
+                ColumnConstraint constraint = new ColumnConstraint();
+
+                while (index < tokens.Length)
+                {
+                    string token = tokens[index].ToUpper();
+
+                    switch (token)
+                    {
+                        case "NOT_NULL":
+                        case "NOTNULL":
+                        case "NOT":
+                            constraint.Constraints |= ConstraintType.NotNull;
+                            break;
+
+                        case "UNIQUE":
+                            constraint.Constraints |= ConstraintType.Unique;
+                            break;
+
+                        case "PRIMARY_KEY":
+                        case "PRIMARYKEY":
+                        case "PRIMARY":
+                            constraint.Constraints |= ConstraintType.PrimaryKey;
+                            break;
+
+                        case "DEFAULT":
+                            index++;
+                            if (index < tokens.Length)
+                                constraint.DefaultValue = tokens[index];
+                            else
+                            {
+                                Console.WriteLine("Syntax Error: DEFAULT value missing.");
+                                return;
+                            }
+                            break;
+
+                        case "CHECK":
+                            constraint.Constraints |= ConstraintType.Check;
+                            index++;
+                            if (index < tokens.Length && tokens[index].StartsWith("("))
+                            {
+                                StringBuilder checkExpr = new StringBuilder(tokens[index]);
+                                index++;
+                                while (index < tokens.Length && !tokens[index].EndsWith(")"))
+                                {
+                                    checkExpr.Append(" ").Append(tokens[index]);
+                                    index++;
+                                }
+
+                                if (index < tokens.Length)
+                                {
+                                    checkExpr.Append(" ").Append(tokens[index]); // Append last part
+                                    constraint.CheckExpression = checkExpr.ToString().Trim('(', ')');
+                                }
+                                else
+                                {
+                                    Console.WriteLine("Syntax Error: Invalid CHECK expression.");
+                                    return;
+                                }
+                            }
+                            else
+                            {
+                                Console.WriteLine("Syntax Error: CHECK expression missing.");
+                                return;
+                            }
+                            break;
+
+                        case "FOREIGN_KEY":
+                        case "FOREIGNKEY":
+                            constraint.Constraints |= ConstraintType.ForeignKey;
+                            index++;
+                            if (index < tokens.Length && tokens[index].Contains("(") && tokens[index].Contains(")"))
+                            {
+                                string refDef = tokens[index];
+                                int parenStart = refDef.IndexOf('(');
+                                int parenEnd = refDef.IndexOf(')');
+                                constraint.ReferenceTable = refDef.Substring(0, parenStart);
+                                constraint.ReferenceColumn = refDef.Substring(parenStart + 1, parenEnd - parenStart - 1);
+                            }
+                            else
+                            {
+                                Console.WriteLine("Syntax Error: FOREIGN_KEY format should be <table(column)>.");
+                                return;
+                            }
+                            break;
+
+                        default:
+                            Console.WriteLine($"Warning: Unknown token '{token}' ignored.");
+                            break;
+                    }
+
+                    index++;
+                }
+
+                columns.Add(new Column(colName, dataType, maxLength, constraint));
+            }
 
             if (database == null)
             {
@@ -136,10 +255,7 @@ class QueryProcessor
             database.CreateTable(tableName, columns);
             Console.WriteLine($"Table '{tableName}' created successfully in database '{database.Name}'.");
         }
-        else
-        {
-            Console.WriteLine("Syntax Error: Unknown CREATE command. Use 'CREATE DATABASE' or 'CREATE TABLE'.");
-        }
+
     }
     public Database GetQPDatabase()
     {
@@ -173,11 +289,11 @@ class QueryProcessor
         Dictionary<string, string> row = columns.Zip(values, (col, val) => new { col, val })
                                                .ToDictionary(x => x.col, x => x.val);
 
-        if (transactionManager.IsInTransaction())
-        {
-            transactionManager.LogOperation("insert",tableName,null, new List<Dictionary<string, string>> { row }
-);
-        }
+        // if (transactionManager.IsInTransaction())
+        // {
+        //     transactionManager.LogOperation("insert",tableName,null, new List<Dictionary<string, string>> { row }
+        //
+        // }
 
         database.Tables[tableName].InsertRow(row);
         Console.WriteLine("Row inserted successfully.");
@@ -249,12 +365,12 @@ class QueryProcessor
             return;
         }
 
-        if (transactionManager.IsInTransaction())
-        {
-            var beforeRows = matchedRows.Select(r => new Dictionary<string, string>(r)).ToList();
-            var afterRows = matchedRows.Select(r => { var copy = new Dictionary<string, string>(r); copy[setCol] = setVal; return copy; }).ToList();
-            transactionManager.LogOperation("update", tableName, beforeRows, afterRows);
-        }
+       //if (transactionManager.IsInTransaction())
+       //{
+       //    var beforeRows = matchedRows.Select(r => new Dictionary<string, string>(r)).ToList();
+       //    var afterRows = matchedRows.Select(r => { var copy = new Dictionary<string, string>(r); copy[setCol] = setVal; return copy; }).ToList();
+       //    transactionManager.LogOperation("update", tableName, beforeRows, afterRows);
+       //}
 
         foreach (var row in matchedRows)
         {
@@ -294,11 +410,11 @@ class QueryProcessor
             return;
         }
 
-        if (transactionManager.IsInTransaction())
-        {
-            var beforeRows = rowsToDelete.Select(r => new Dictionary<string, string>(r)).ToList();
-            transactionManager.LogOperation("delete", tableName, beforeRows, null);
-        }
+      //  if (transactionManager.IsInTransaction())
+      //  {
+      //      var beforeRows = rowsToDelete.Select(r => new Dictionary<string, string>(r)).ToList();
+      //      transactionManager.LogOperation("delete", tableName, beforeRows, null);
+      //  }
 
         database.Tables[tableName].Rows.RemoveAll(r => r.ContainsKey(whereColumn) && r[whereColumn] == whereValue);
         Console.WriteLine($"{rowsToDelete.Count} row(s) deleted successfully from '{tableName}'.");

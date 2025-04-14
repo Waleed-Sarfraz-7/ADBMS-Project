@@ -1,101 +1,73 @@
-﻿ class TransactionManager
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+
+public class TransactionManager
 {
-    private Stack<List<(string Operation, string TableName, List<Dictionary<string, string>> Before, List<Dictionary<string, string>> After)>> transactionStack;
-    private bool inTransaction;
+    private Dictionary<Guid, Transaction> activeTransactions = new();
+    private MVCCDatabase database;
+    private ConcurrencyControl concurrencyControl;
 
-    public bool IsInTransaction() => inTransaction;
-
-    public TransactionManager()
+    public TransactionManager(MVCCDatabase db, ConcurrencyControl cc)
     {
-        transactionStack = new Stack<List<(string, string, List<Dictionary<string, string>>, List<Dictionary<string, string>>)>>();
-        inTransaction = false;
+        database = db;
+        concurrencyControl = cc;
     }
 
-    public void BeginTransaction()
+    public Guid BeginTransaction()
     {
-        if (inTransaction)
-        {
-            Console.WriteLine("Transaction already in progress.");
-            return;
-        }
-
-        inTransaction = true;
-        transactionStack.Push(new List<(string, string, List<Dictionary<string, string>>, List<Dictionary<string, string>>)>());
-        Console.WriteLine("Transaction Started...");
+        var txId = Guid.NewGuid();
+        var tx = new Transaction(txId);
+        activeTransactions[txId] = tx;
+        Console.WriteLine($"Transaction {txId} started.");
+        return txId;
     }
 
-    public void LogOperation(string operation, string tableName, List<Dictionary<string, string>> before, List<Dictionary<string, string>> after)
+    public void Insert(Guid txId, string tableName, Dictionary<string, string> row)
     {
-        if (!inTransaction) return;
-        transactionStack.Peek().Add((operation, tableName, before, after));
+        concurrencyControl.AcquireWriteLock(tableName, txId);
+        if (!activeTransactions.ContainsKey(txId)) return;
+
+        var tx = activeTransactions[txId];
+        database.Insert(tx, tableName, row);
     }
 
-    public void CommitTransaction()
+    public List<Dictionary<string, string>> Read(Guid txId, string tableName)
     {
-        if (!inTransaction)
-        {
-            Console.WriteLine("No transaction to commit.");
-            return;
-        }
+        if (!activeTransactions.ContainsKey(txId)) return new();
 
-        transactionStack.Pop();
-        inTransaction = false;
-        Console.WriteLine("Transaction Committed Successfully.");
+        var tx = activeTransactions[txId];
+        return database.Read(tx, tableName);
     }
 
-    public void RollbackTransaction(Database database)
+    public void Commit(Guid txId)
     {
-        if (!inTransaction)
-        {
-            Console.WriteLine("No transaction to rollback.");
-            return;
-        }
+        if (!activeTransactions.ContainsKey(txId)) return;
 
-        var operations = transactionStack.Pop();
-        operations.Reverse();
-
-        foreach (var (operation, tableName, beforeList, afterList) in operations)
-        {
-            if (!database.Tables.ContainsKey(tableName)) continue;
-
-            var table = database.Tables[tableName];
-
-            if (operation == "insert")
-            {
-                // remove inserted rows
-                foreach (var afterRow in afterList)
-                    table.Rows.RemoveAll(r => AreRowsEqual(r, afterRow));
-            }
-            else if (operation == "delete")
-            {
-                // re-insert deleted rows
-                table.Rows.AddRange(beforeList);
-            }
-            else if (operation == "update")
-            {
-                // revert all updated rows
-                foreach (var i in Enumerable.Range(0, beforeList.Count))
-                {
-                    var oldRow = beforeList[i];
-                    var newRow = afterList[i];
-                    var rowToUpdate = table.Rows.FirstOrDefault(r => AreRowsEqual(r, newRow));
-                    if (rowToUpdate != null)
-                    {
-                        foreach (var key in oldRow.Keys)
-                            rowToUpdate[key] = oldRow[key];
-                    }
-                }
-            }
-        }
-
-        inTransaction = false;
-        Console.WriteLine("Transaction Rolled Back Successfully.");
+        database.Commit(activeTransactions[txId]);
+        concurrencyControl.ReleaseLocks(txId);
+        activeTransactions.Remove(txId);
+        Console.WriteLine($"Transaction {txId} committed.");
     }
 
-    private bool AreRowsEqual(Dictionary<string, string> r1, Dictionary<string, string> r2)
+    public void Rollback(Guid txId)
     {
-        return r1.Count == r2.Count && r1.All(kv => r2.ContainsKey(kv.Key) && r2[kv.Key] == kv.Value);
+        if (!activeTransactions.ContainsKey(txId)) return;
+
+        database.Rollback(activeTransactions[txId]);
+        concurrencyControl.ReleaseLocks(txId);
+        activeTransactions.Remove(txId);
+        Console.WriteLine($"Transaction {txId} rolled back.");
     }
+}
 
+public class Transaction
+{
+    public Guid Id { get; }
+    public Dictionary<string, List<Dictionary<string, string>>> UncommittedChanges = new();
 
+    public Transaction(Guid id)
+    {
+        Id = id;
+    }
 }
