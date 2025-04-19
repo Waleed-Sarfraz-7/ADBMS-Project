@@ -1,5 +1,6 @@
 ﻿using ConsoleApp1;
 using System.Text.Json;
+using System.IO;
 
 class StorageManager
 {
@@ -8,6 +9,14 @@ class StorageManager
     public static void SaveDBMS(DBMS dbms)
     {
         Directory.CreateDirectory(RootDataPath);
+
+        // Configure JsonSerializerOptions to handle circular references
+        var options = new JsonSerializerOptions
+        {
+            WriteIndented = true,
+            ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.Preserve // This is the key fix
+        };
+
         foreach (var dbEntry in dbms.Databases)
         {
             string dbPath = Path.Combine(RootDataPath, dbEntry.Key);
@@ -15,10 +24,12 @@ class StorageManager
 
             foreach (var table in dbEntry.Value.Tables)
             {
-                string json = JsonSerializer.Serialize(table.Value);
-                File.WriteAllText($"{dbPath}/{table.Key}.json", json);
+                string json = JsonSerializer.Serialize(table.Value, options);
+                File.WriteAllText(Path.Combine(dbPath, $"{table.Key}.json"), json);
             }
         }
+
+        Console.WriteLine("DBMS saved successfully.");
     }
 
     public static DBMS LoadDBMS()
@@ -35,14 +46,34 @@ class StorageManager
                 foreach (var file in Directory.GetFiles(dbFolder, "*.json"))
                 {
                     string json = File.ReadAllText(file);
-                    Table table = JsonSerializer.Deserialize<Table>(json);
+
+                    // Use the same options for deserialization to handle cycles
+                    var options = new JsonSerializerOptions
+                    {
+                        ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.Preserve
+                    };
+
+                    Table table = JsonSerializer.Deserialize<Table>(json, options);
+
+                    // Set table parent
+                    table.SetParentDatabase(db);
+
+                    // Set column parents
+                    foreach (var column in table.Columns)
+                    {
+                        column.SetParentTable(table);
+                    }
+
                     db.Tables[table.Name] = table;
+
+                    Console.WriteLine($"Loaded table '{table.Name}' into database '{dbName}'.");
                 }
 
                 dbms.Databases[dbName] = db;
             }
         }
 
+        Console.WriteLine("DBMS loaded successfully.");
         return dbms;
     }
 }

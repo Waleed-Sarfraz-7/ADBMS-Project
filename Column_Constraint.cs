@@ -26,6 +26,7 @@ namespace ConsoleApp1
         public string ReferenceColumn { get; set; }
 
         public bool Has(ConstraintType type) => Constraints.HasFlag(type);
+
     }
 
 }

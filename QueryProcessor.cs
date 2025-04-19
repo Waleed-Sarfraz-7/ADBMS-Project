@@ -63,6 +63,72 @@ class QueryProcessor
                 break;
         }
     }
+    public List<Dictionary<string, string>> ExecuteJoinQuery(
+        string table1Name,
+        string table2Name,
+        string table1JoinColumn,
+        string table2JoinColumn,
+        Database db)
+    {
+        if (!db.Tables.ContainsKey(table1Name) || !db.Tables.ContainsKey(table2Name))
+        {
+            Console.WriteLine("One or both tables not found.");
+            return new List<Dictionary<string, string>>();
+        }
+
+        var table1 = db.Tables[table1Name];
+        var table2 = db.Tables[table2Name];
+
+        var result = new List<Dictionary<string, string>>();
+
+        foreach (var row1 in table1.Rows)
+        {
+            if (!row1.ContainsKey(table1JoinColumn)) continue;
+
+            string value1 = row1[table1JoinColumn];
+
+            foreach (var row2 in table2.Rows)
+            {
+                if (!row2.ContainsKey(table2JoinColumn)) continue;
+
+                string value2 = row2[table2JoinColumn];
+
+                if (value1 == value2)
+                {
+                    var combined = new Dictionary<string, string>();
+
+                    foreach (var kv in row1)
+                        combined[$"{table1Name}.{kv.Key}"] = kv.Value;
+
+                    foreach (var kv in row2)
+                        combined[$"{table2Name}.{kv.Key}"] = kv.Value;
+
+                    result.Add(combined);
+                }
+            }
+        }
+
+        return result;
+    }
+    public List<Dictionary<string, string>> ExecuteJoinQuery(string leftTableName, string rightTableName, Database db)
+    {
+        var leftTable = db.Tables[leftTableName];
+        var rightTable = db.Tables[rightTableName];
+
+        var leftJoinColumn = leftTable.Columns
+            .FirstOrDefault(c => c.Constraint.Has(ConstraintType.ForeignKey) &&
+                                 c.Constraint.ReferenceTable == rightTableName);
+
+        if (leftJoinColumn == null)
+        {
+            Console.WriteLine("No foreign key relationship found.");
+            return new List<Dictionary<string, string>>();
+        }
+
+        string rightJoinColumn = leftJoinColumn.Constraint.ReferenceColumn;
+        return ExecuteJoinQuery(leftTableName, rightTableName, leftJoinColumn.Name, rightJoinColumn, db);
+    }
+
     private void HandleUseDatabase(string[] parts)
     {
         if (parts.Length != 2)
@@ -71,7 +137,7 @@ class QueryProcessor
             return;
         }
 
-        string dbName = parts[1].ToLower();
+        string dbName = parts[1];
         if (dbms.UseDatabase(dbName))
         {
            
@@ -326,7 +392,7 @@ class QueryProcessor
             return;
         }
 
-        string tableName = parts[1].ToLower();
+        string tableName = parts[1];
         if (!database.Tables.ContainsKey(tableName))
         {
             Console.WriteLine($"Table '{tableName}' does not exist.");

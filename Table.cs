@@ -1,4 +1,5 @@
-﻿using ConsoleApp1;
+﻿using System.Text.Json.Serialization;
+using ConsoleApp1;
 
 
 class Table
@@ -8,6 +9,7 @@ class Table
     public List<Dictionary<string, string>> Rows { get; set; }
 
     // 👇 NEW: Reference to parent Database (used for FK validation)
+    [JsonIgnore]
     public Database ParentDatabase { get; set; }
 
     public Table(string name, List<Column> columns, Database parentDatabase = null)
@@ -17,6 +19,8 @@ class Table
         Rows = new List<Dictionary<string, string>>();
         ParentDatabase = parentDatabase;
     }
+    public Table(){}
+
 
     public void SetParentDatabase(Database db)
     {

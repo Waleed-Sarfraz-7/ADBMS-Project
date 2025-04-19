@@ -1,0 +1,64 @@
+{
+  "$id": "1",
+  "Name": "Teachers",
+  "Columns": {
+    "$id": "2",
+    "$values": [
+      {
+        "$id": "3",
+        "Name": "id",
+        "Data_Type": "INT",
+        "MaxLength": null,
+        "Constraint": {
+          "$id": "4",
+          "Constraints": 4,
+          "DefaultValue": null,
+          "CheckExpression": null,
+          "ReferenceTable": null,
+          "ReferenceColumn": null
+        },
+        "ParentTable": {
+          "$ref": "1"
+        }
+      },
+      {
+        "$id": "5",
+        "Name": "name",
+        "Data_Type": "STRING",
+        "MaxLength": 20,
+        "Constraint": {
+          "$id": "6",
+          "Constraints": 0,
+          "DefaultValue": null,
+          "CheckExpression": null,
+          "ReferenceTable": null,
+          "ReferenceColumn": null
+        },
+        "ParentTable": {
+          "$ref": "1"
+        }
+      },
+      {
+        "$id": "7",
+        "Name": "Student_id",
+        "Data_Type": "INT",
+        "MaxLength": null,
+        "Constraint": {
+          "$id": "8",
+          "Constraints": 0,
+          "DefaultValue": null,
+          "CheckExpression": null,
+          "ReferenceTable": null,
+          "ReferenceColumn": null
+        },
+        "ParentTable": {
+          "$ref": "1"
+        }
+      }
+    ]
+  },
+  "Rows": {
+    "$id": "9",
+    "$values": []
+  }
+}
