@@ -47,6 +47,11 @@
         "$id": "8",
         "id": "101",
         "name": "Computer Science"
+      },
+      {
+        "$id": "9",
+        "id": "102",
+        "name": "EE"
       }
     ]
   }

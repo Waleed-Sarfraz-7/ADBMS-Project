@@ -1,7 +1,7 @@
-﻿ class Transaction
+﻿class Transaction
 {
     public Guid Id { get; }
-    public List<(string Operation, string TableName, List<Dictionary<string, string>> Before, List<Dictionary<string, string>> After)> Operations { get; }
+    public List<OperationLog> Operations { get; }
     public bool IsActive { get; set; }
 
     // Track inserted rows per transaction
@@ -15,7 +15,15 @@
         InsertedRows = new();
     }
 }
- class TransactionManager
+class OperationLog
+{
+    public string Operation { get; set; }
+    public string TableName { get; set; }
+    public List<(int RowIndex, Dictionary<string, string> Row)> Before { get; set; }
+    public List<(int RowIndex, Dictionary<string, string> Row)> After { get; set; }
+}
+
+class TransactionManager
 {
     private readonly Dictionary<Guid, Transaction> transactions;
     private readonly ConcurrencyControl concurrencyControl;
@@ -39,25 +47,41 @@
     {
         if (!transactions.TryGetValue(transactionId, out var transaction) || !transaction.IsActive) return;
 
-        if (operation == "insert" && after != null)
-        {
-            foreach (var row in after)
-            {
-                transaction.InsertedRows.Add((tableName, row));
-            }
-        }
+        var beforeWithIndex = new List<(int, Dictionary<string, string>)>();
+        var afterWithIndex = new List<(int, Dictionary<string, string>)>();
 
-        // Acquire write locks
         if (db.Tables.TryGetValue(tableName, out var table))
         {
-            foreach (var row in after ?? Enumerable.Empty<Dictionary<string, string>>())
+            if (before != null)
             {
-                int rowIndex = table.Rows.FindIndex(r => AreRowsEqual(r, row));
-                concurrencyControl.AcquireWriteLock(tableName, rowIndex == -1 ? -1 : rowIndex, transactionId);
+                foreach (var row in before)
+                {
+                    int index = table.Rows.FindIndex(r => AreRowsEqual(r, row));
+                    beforeWithIndex.Add((index, row));
+                }
+            }
+
+            if (after != null)
+            {
+                foreach (var row in after)
+                {
+                    int index = table.Rows.FindIndex(r => AreRowsEqual(r, row));
+                    if (operation == "insert")
+                        transaction.InsertedRows.Add((tableName, row));
+
+                    concurrencyControl.AcquireWriteLock(tableName, index == -1 ? -1 : index, transactionId);
+                    afterWithIndex.Add((index, row));
+                }
             }
         }
 
-        transaction.Operations.Add((operation, tableName, before, after));
+        transaction.Operations.Add(new OperationLog
+        {
+            Operation = operation,
+            TableName = tableName,
+            Before = beforeWithIndex,
+            After = afterWithIndex
+        });
     }
 
     public List<Dictionary<string, string>> GetVisibleRows(Guid transactionId, string tableName, Database db)
@@ -69,7 +93,6 @@
 
         foreach (var row in table.Rows)
         {
-            // Basic logic: show all committed rows and this transaction's uncommitted changes
             bool isVisible = true;
 
             foreach (var t in transactions.Values)
@@ -80,11 +103,11 @@
                 {
                     if (op.TableName == tableName && op.Operation == "insert")
                     {
-                        foreach (var afterRow in op.After)
+                        foreach (var (_, afterRow) in op.After)
                         {
                             if (AreRowsEqual(afterRow, row))
                             {
-                                isVisible = false; // Row was inserted by another *active* transaction
+                                isVisible = false;
                                 break;
                             }
                         }
@@ -100,7 +123,6 @@
 
         return visibleRows;
     }
-
 
     public void CommitTransaction(Guid transactionId)
     {
@@ -126,38 +148,39 @@
 
         transaction.Operations.Reverse();
 
-        foreach (var (operation, tableName, beforeList, afterList) in transaction.Operations)
+        foreach (var op in transaction.Operations)
         {
-            if (!database.Tables.ContainsKey(tableName)) continue;
+            if (!database.Tables.ContainsKey(op.TableName)) continue;
+            var table = database.Tables[op.TableName];
 
-            var table = database.Tables[tableName];
-
-            if (operation == "insert")
+            if (op.Operation == "insert")
             {
-                foreach (var afterRow in afterList)
+                foreach (var (_, afterRow) in op.After)
                     table.Rows.RemoveAll(r => AreRowsEqual(r, afterRow));
             }
-            else if (operation == "delete")
+            else if (op.Operation == "delete")
             {
-                table.Rows.AddRange(beforeList);
-            }
-            else if (operation == "update")
-            {
-                for (int i = 0; i < beforeList.Count; i++)
+                foreach (var (rowIndex, beforeRow) in op.Before)
                 {
-                    var oldRow = beforeList[i];
-                    var newRow = afterList[i];
-                    var rowToUpdate = table.Rows.FirstOrDefault(r => AreRowsEqual(r, newRow));
-                    if (rowToUpdate != null)
+                    if (rowIndex < 0 || rowIndex > table.Rows.Count)
+                        table.Rows.Add(beforeRow);
+                    else
+                        table.Rows.Insert(rowIndex, beforeRow);
+                }
+            }
+            else if (op.Operation == "update")
+            {
+                foreach (var (rowIndex, beforeRow) in op.Before)
+                {
+                    if (rowIndex >= 0 && rowIndex < table.Rows.Count)
                     {
-                        foreach (var key in oldRow.Keys)
-                            rowToUpdate[key] = oldRow[key];
+                        foreach (var key in beforeRow.Keys)
+                            table.Rows[rowIndex][key] = beforeRow[key];
                     }
                 }
             }
         }
 
-        // Also remove uncommitted inserted rows
         foreach (var (tableName, row) in transaction.InsertedRows)
         {
             if (database.Tables.TryGetValue(tableName, out var table))

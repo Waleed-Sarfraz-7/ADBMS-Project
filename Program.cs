@@ -61,12 +61,12 @@ class Program
         //};
         //        db.CreateTable("Students", studentColumns);
         //        var qp = new QueryProcessor(tm,dbms);
-        var result = qp.ExecuteJoinQuery("Students", "Departments", qp.GetQPDatabase());
+        //var result = qp.ExecuteJoinQuery("Students", "Departments", qp.GetQPDatabase());
 
-        foreach (var row in result)
-        {
-            Console.WriteLine(string.Join(", ", row.Select(kv => $"{kv.Key}={kv.Value}")));
-        }
+        //foreach (var row in result)
+        //{
+        //    Console.WriteLine(string.Join(", ", row.Select(kv => $"{kv.Key}={kv.Value}")));
+        //}
 
         //        db.Tables["Departments"].InsertRow(new Dictionary<string, string>
         //{

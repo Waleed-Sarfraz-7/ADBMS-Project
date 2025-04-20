@@ -9,6 +9,8 @@ class QueryProcessor
     private Database database;
     private TransactionManager transactionManager;
     private readonly DBMS dbms;
+    private Guid? currentTransactionId = null; // You should manage this at the class level
+
     public QueryProcessor( TransactionManager tm, DBMS dBMS)
     {
         transactionManager = tm;
@@ -31,7 +33,7 @@ class QueryProcessor
                 break;
 
             case "select":
-                HandleSelectQuery(parts);
+                HandleSelectQuery(query);
                 break;
 
             case "update":
@@ -43,15 +45,15 @@ class QueryProcessor
                 break;
 
             case "begin":
-                transactionManager.BeginTransaction();
+                HandleBeginTransaction();
                 break;
 
             case "commit":
-               // transactionManager.CommitTransaction();
+                HandleCommitTransaction();
                 break;
 
             case "rollback":
-               // transactionManager.RollbackTransaction(database);
+                HandleRollbackTransaction();
                 break;
             case "use":
                 HandleUseDatabase(parts);
@@ -63,45 +65,98 @@ class QueryProcessor
                 break;
         }
     }
-    public List<Dictionary<string, string>> ExecuteJoinQuery(
-        string table1Name,
-        string table2Name,
-        string table1JoinColumn,
-        string table2JoinColumn,
-        Database db)
+    public void HandleBeginTransaction()
     {
-        if (!db.Tables.ContainsKey(table1Name) || !db.Tables.ContainsKey(table2Name))
-        {
-            Console.WriteLine("One or both tables not found.");
-            return new List<Dictionary<string, string>>();
-        }
+        currentTransactionId = transactionManager.BeginTransaction();
+    }
 
-        var table1 = db.Tables[table1Name];
-        var table2 = db.Tables[table2Name];
+    public void HandleCommitTransaction()
+    {
+        if (currentTransactionId.HasValue)
+        {
+            transactionManager.CommitTransaction(currentTransactionId.Value);
+            currentTransactionId = null;
+        }
+    }
+    public void HandleRollbackTransaction()
+    {
+        if (currentTransactionId.HasValue)
+        {
+            transactionManager.RollbackTransaction(currentTransactionId.Value, database);
+            currentTransactionId = null;
+        }
+    }
+    public List<Dictionary<string, string>> ExecuteJoinQuery(
+    string leftTableName,
+    string rightTableName,
+    string leftJoinColumn,
+    string rightJoinColumn,
+    string joinType,
+    Database db)
+    {
+        var leftTable = db.Tables[leftTableName];
+        var rightTable = db.Tables[rightTableName];
 
         var result = new List<Dictionary<string, string>>();
 
-        foreach (var row1 in table1.Rows)
+        foreach (var leftRow in leftTable.Rows)
         {
-            if (!row1.ContainsKey(table1JoinColumn)) continue;
+            bool matchFound = false;
+            Console.WriteLine("Left Row Keys: " + string.Join(", ", leftRow.Keys));
 
-            string value1 = row1[table1JoinColumn];
 
-            foreach (var row2 in table2.Rows)
+            foreach (var rightRow in rightTable.Rows)
             {
-                if (!row2.ContainsKey(table2JoinColumn)) continue;
-
-                string value2 = row2[table2JoinColumn];
-
-                if (value1 == value2)
+                if (leftRow.TryGetValue(leftJoinColumn, out string leftValue) &&
+                    rightRow.TryGetValue(rightJoinColumn, out string rightValue) &&
+                    leftValue == rightValue)
                 {
                     var combined = new Dictionary<string, string>();
 
-                    foreach (var kv in row1)
-                        combined[$"{table1Name}.{kv.Key}"] = kv.Value;
+                    foreach (var kv in leftRow)
+                        combined[$"{leftTableName}.{kv.Key}"] = kv.Value;
 
-                    foreach (var kv in row2)
-                        combined[$"{table2Name}.{kv.Key}"] = kv.Value;
+                    foreach (var kv in rightRow)
+                        combined[$"{rightTableName}.{kv.Key}"] = kv.Value;
+
+                    result.Add(combined);
+                    matchFound = true;
+                }
+            }
+
+            
+        
+
+
+        if ((joinType == "LEFT" || joinType == "FULL") && !matchFound)
+            {
+                var combined = new Dictionary<string, string>();
+                foreach (var kv in leftRow)
+                    combined[$"{leftTableName}.{kv.Key}"] = kv.Value;
+
+                foreach (var col in rightTable.Columns)
+                    combined[$"{rightTableName}.{col.Name}"] = "NULL";
+
+                result.Add(combined);
+            }
+        }
+
+        if (joinType == "RIGHT" || joinType == "FULL")
+        {
+            foreach (var rightRow in rightTable.Rows)
+            {
+                bool matchFound = result.Any(r =>
+                    r.ContainsKey($"{rightTableName}.{rightJoinColumn}") &&
+                    r[$"{rightTableName}.{rightJoinColumn}"] == rightRow[rightJoinColumn]);
+
+                if (!matchFound)
+                {
+                    var combined = new Dictionary<string, string>();
+                    foreach (var col in leftTable.Columns)
+                        combined[$"{leftTableName}.{col.Name}"] = "NULL";
+
+                    foreach (var kv in rightRow)
+                        combined[$"{rightTableName}.{kv.Key}"] = kv.Value;
 
                     result.Add(combined);
                 }
@@ -110,24 +165,7 @@ class QueryProcessor
 
         return result;
     }
-    public List<Dictionary<string, string>> ExecuteJoinQuery(string leftTableName, string rightTableName, Database db)
-    {
-        var leftTable = db.Tables[leftTableName];
-        var rightTable = db.Tables[rightTableName];
 
-        var leftJoinColumn = leftTable.Columns
-            .FirstOrDefault(c => c.Constraint.Has(ConstraintType.ForeignKey) &&
-                                 c.Constraint.ReferenceTable == rightTableName);
-
-        if (leftJoinColumn == null)
-        {
-            Console.WriteLine("No foreign key relationship found.");
-            return new List<Dictionary<string, string>>();
-        }
-
-        string rightJoinColumn = leftJoinColumn.Constraint.ReferenceColumn;
-        return ExecuteJoinQuery(leftTableName, rightTableName, leftJoinColumn.Name, rightJoinColumn, db);
-    }
 
     private void HandleUseDatabase(string[] parts)
     {
@@ -355,34 +393,120 @@ class QueryProcessor
         Dictionary<string, string> row = columns.Zip(values, (col, val) => new { col, val })
                                                .ToDictionary(x => x.col, x => x.val);
 
-        // if (transactionManager.IsInTransaction())
-        // {
-        //     transactionManager.LogOperation("insert",tableName,null, new List<Dictionary<string, string>> { row }
-        //
-        // }
+        if (currentTransactionId.HasValue)
+        {
+            // Log the operation before performing it
+            transactionManager.LogOperation(
+                currentTransactionId.Value,
+                "insert",
+                tableName,
+                null,                           // No "before" state for insert
+                new List<Dictionary<string, string>> { row },
+                database
+            );
+        }
 
         database.Tables[tableName].InsertRow(row);
         Console.WriteLine("Row inserted successfully.");
     }
 
-    private void HandleSelectQuery(string[] parts)
+    public void HandleSelectQuery(string query)
     {
-        if (parts.Length < 4 || parts[1] != "*" || parts[2].ToLower() != "from")
+        query = query.Trim();
+        var originalQuery = query;
+        query = query.Replace(",", " , "); // Ensures columns split correctly
+        var parts = query.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+        if (parts.Length < 4 || parts[0].ToUpper() != "SELECT")
         {
-            Console.WriteLine("Syntax Error: Use SELECT * FROM <table_name>");
+            Console.WriteLine("Syntax Error: Invalid SELECT query.");
             return;
         }
 
-        string tableName = parts[3];
-        if (database.Tables.ContainsKey(tableName))
+        // 1. Extract columns
+        int fromIndex = Array.IndexOf(parts, "FROM");
+        if (fromIndex == -1)
         {
-            database.Tables[tableName].DisplayTable();
+            Console.WriteLine("Syntax Error: 'FROM' keyword missing.");
+            return;
         }
-        else
+
+        var selectedColumns = parts.Skip(1).Take(fromIndex - 1).ToList();
+        bool selectAll = selectedColumns.Count == 1 && selectedColumns[0] == "*";
+
+        // 2. Handle JOIN query
+        if (parts.Contains("JOIN"))
+        {
+            string table1 = parts[fromIndex + 1];
+            string joinType = parts[fromIndex + 2].ToUpper() == "JOIN" ? "INNER" : parts[fromIndex + 2].ToUpper(); // INNER, LEFT, RIGHT, FULL
+            string table2 = joinType == "INNER" ? parts[fromIndex + 3] : parts[fromIndex + 4];
+
+            int onIndex = Array.IndexOf(parts, "ON");
+            if (onIndex == -1 || onIndex + 3 >= parts.Length)
+            {
+                Console.WriteLine("Syntax Error: JOIN condition missing.");
+                return;
+            }
+
+            var leftJoinField = parts[onIndex + 1].Split('.');
+            var rightJoinField = parts[onIndex + 3].Split('.');
+
+            if (leftJoinField.Length != 2 || rightJoinField.Length != 2)
+            {
+                Console.WriteLine("Syntax Error: JOIN fields must be in format Table.Column");
+                return;
+            }
+
+            string leftTable = leftJoinField[0];
+            string leftColumn = leftJoinField[1];
+            string rightTable = rightJoinField[0];
+            string rightColumn = rightJoinField[1];
+
+            var results = ExecuteJoinQuery(leftTable, rightTable, leftColumn, rightColumn, joinType, database);
+
+            // Print results
+            foreach (var row in results)
+            {
+                Console.WriteLine(string.Join(" | ", selectAll
+                    ? row.Select(kv => $"{kv.Key}: {kv.Value}")
+                    : row.Where(kv => selectedColumns.Contains(kv.Key)).Select(kv => $"{kv.Key}: {kv.Value}")));
+            }
+
+            return;
+        }
+
+        // 3. Handle Simple SELECT (no join)
+        string tableName = parts[fromIndex + 1];
+        if (!database.Tables.TryGetValue(tableName, out var table))
         {
             Console.WriteLine($"Table '{tableName}' does not exist.");
+            return;
+        }
+
+        foreach (var row in table.Rows)
+        {
+            if (selectAll)
+            {
+                Console.WriteLine(string.Join(" | ", row.Select(kv => $"{kv.Key}: {kv.Value}")));
+            }
+            else
+            {
+                var colNames = table.Columns.Select(c => c.Name).ToList();
+                foreach (var col in selectedColumns)
+                {
+                    if (!colNames.Contains(col))
+                    {
+                        Console.WriteLine($"Column '{col}' does not exist in table '{tableName}'.");
+                        return;
+                    }
+                }
+
+                Console.WriteLine(string.Join(" | ", selectedColumns.Select(col => $"{col}: {row[col]}")));
+            }
         }
     }
+
+
 
     private void HandleUpdateQuery(string[] parts)
     {
@@ -431,12 +555,12 @@ class QueryProcessor
             return;
         }
 
-       //if (transactionManager.IsInTransaction())
-       //{
-       //    var beforeRows = matchedRows.Select(r => new Dictionary<string, string>(r)).ToList();
-       //    var afterRows = matchedRows.Select(r => { var copy = new Dictionary<string, string>(r); copy[setCol] = setVal; return copy; }).ToList();
-       //    transactionManager.LogOperation("update", tableName, beforeRows, afterRows);
-       //}
+        if (currentTransactionId.HasValue)
+        {
+            var beforeRows = matchedRows.Select(r => new Dictionary<string, string>(r)).ToList();
+            var afterRows = matchedRows.Select(r => { var copy = new Dictionary<string, string>(r); copy[setCol] = setVal; return copy; }).ToList();
+            transactionManager.LogOperation(currentTransactionId.Value,"update", tableName, beforeRows, afterRows,database);
+        }
 
         foreach (var row in matchedRows)
         {
@@ -476,14 +600,21 @@ class QueryProcessor
             return;
         }
 
-      //  if (transactionManager.IsInTransaction())
-      //  {
-      //      var beforeRows = rowsToDelete.Select(r => new Dictionary<string, string>(r)).ToList();
-      //      transactionManager.LogOperation("delete", tableName, beforeRows, null);
-      //  }
+        if (currentTransactionId.HasValue)
+        {
+            var beforeRows = rowsToDelete.Select(r => new Dictionary<string, string>(r)).ToList();
+            transactionManager.LogOperation(currentTransactionId.Value,"delete", tableName, beforeRows, null,database);
+        }
 
         database.Tables[tableName].Rows.RemoveAll(r => r.ContainsKey(whereColumn) && r[whereColumn] == whereValue);
         Console.WriteLine($"{rowsToDelete.Count} row(s) deleted successfully from '{tableName}'.");
     }
+    public void HandleReadTransaction(string[] parts)
+    {
+        string tableName = parts[1];
+        if (!database.Tables.ContainsKey(tableName)) {
+            Console.WriteLine("Table not exist");
+        }
 
+    }
 }
