@@ -128,6 +128,103 @@ class Table
         // All validations passed — add the row
         Rows.Add(finalRow);
     }
+    public void UpdateRow(string primaryKeyValue, Dictionary<string, string> updatedValues)
+    {
+        if (ParentDatabase == null)
+            throw new Exception("Parent database reference is required for constraint validation.");
+
+        // Find the primary key column
+        var primaryKeyColumn = Columns.FirstOrDefault(c => c.Constraint.Has(ConstraintType.PrimaryKey));
+        if (primaryKeyColumn == null)
+            throw new Exception("No primary key defined for the table.");
+
+        var targetRow = Rows.FirstOrDefault(r => r[primaryKeyColumn.Name] == primaryKeyValue);
+        if (targetRow == null)
+            throw new Exception($"No row found with {primaryKeyColumn.Name} = {primaryKeyValue}");
+
+        // Validate and apply each update
+        foreach (var update in updatedValues)
+        {
+            var col = Columns.FirstOrDefault(c => c.Name == update.Key);
+            if (col == null)
+                throw new Exception($"Column '{update.Key}' does not exist in table '{Name}'.");
+
+            string value = update.Value;
+
+            // Type check
+            switch (col.Data_Type)
+            {
+                case "INT":
+                    if (!int.TryParse(value, out _))
+                        throw new Exception($"'{value}' is not a valid INT for column '{col.Name}'");
+                    break;
+                case "BOOLEAN":
+                    if (!bool.TryParse(value, out _))
+                        throw new Exception($"'{value}' is not a valid BOOLEAN for column '{col.Name}'");
+                    break;
+                case "STRING":
+                    if (col.MaxLength.HasValue && value.Length > col.MaxLength.Value)
+                        throw new Exception($"Value for '{col.Name}' exceeds max length {col.MaxLength.Value}");
+                    break;
+            }
+
+            // Foreign Key Check
+            if (col.Constraint.Has(ConstraintType.ForeignKey))
+            {
+                var refTable = ParentDatabase.Tables[col.Constraint.ReferenceTable];
+                var refColumn = col.Constraint.ReferenceColumn;
+
+                bool exists = refTable.Rows.Any(r => r.ContainsKey(refColumn) && r[refColumn] == value);
+                if (!exists)
+                    throw new Exception($"Foreign key constraint failed for value '{value}' in column '{col.Name}'");
+            }
+
+            // Apply update
+            targetRow[col.Name] = value;
+        }
+
+        Console.WriteLine("Row updated successfully.");
+    }
+
+    public void DeleteRow(string primaryKeyValue)
+    {
+        if (ParentDatabase == null)
+            throw new Exception("Parent database reference is required for constraint validation.");
+
+        var primaryKeyColumn = Columns.FirstOrDefault(c => c.Constraint.Has(ConstraintType.PrimaryKey));
+        if (primaryKeyColumn == null)
+            throw new Exception("No primary key defined for the table.");
+
+        var rowToDelete = Rows.FirstOrDefault(r => r[primaryKeyColumn.Name] == primaryKeyValue);
+        if (rowToDelete == null)
+            throw new Exception($"No row found with {primaryKeyColumn.Name} = {primaryKeyValue}");
+
+        // Cascade delete from other tables
+        foreach (var table in ParentDatabase.Tables.Values)
+        {
+            foreach (var col in table.Columns)
+            {
+                if (col.Constraint.Has(ConstraintType.ForeignKey) &&
+                    col.Constraint.ReferenceTable == Name &&
+                    col.Constraint.ReferenceColumn == primaryKeyColumn.Name)
+                {
+                    var rowsToCascadeDelete = table.Rows
+                        .Where(r => r.ContainsKey(col.Name) && r[col.Name] == primaryKeyValue)
+                        .ToList();
+
+                    foreach (var childRow in rowsToCascadeDelete)
+                    {
+                        table.Rows.Remove(childRow);
+                        Console.WriteLine($"Cascading delete: Row removed from '{table.Name}' where '{col.Name}' = {primaryKeyValue}");
+                    }
+                }
+            }
+        }
+
+        // Finally delete the row
+        Rows.Remove(rowToDelete);
+        Console.WriteLine("Row deleted successfully.");
+    }
 
     public void DisplayTable()
     {

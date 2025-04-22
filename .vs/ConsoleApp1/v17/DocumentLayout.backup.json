@@ -83,8 +83,7 @@
               "RelativeToolTip": "TransactionManager.cs",
               "ViewState": "AgIAAEoAAAAAAAAAAADwv1kAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-03-22T21:41:13.127Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-03-22T21:41:13.127Z"
             },
             {
               "$type": "Document",
@@ -92,9 +91,9 @@
               "Title": "QueryProcessor.cs",
               "DocumentMoniker": "F:\\Semester 4\\DB Project\\C#\\QueryProcessor.cs",
               "RelativeDocumentMoniker": "QueryProcessor.cs",
-              "ToolTip": "F:\\Semester 4\\DB Project\\C#\\QueryProcessor.cs",
-              "RelativeToolTip": "QueryProcessor.cs",
-              "ViewState": "AgIAAGAAAAAAAAAAAAAhwGkAAAAAAAAAAAAAAA==",
+              "ToolTip": "F:\\Semester 4\\DB Project\\C#\\QueryProcessor.cs*",
+              "RelativeToolTip": "QueryProcessor.cs*",
+              "ViewState": "AgIAABsDAAAAAAAAAAAAACcDAAAWAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-03-22T21:40:53.424Z",
               "EditorCaption": ""
@@ -119,7 +118,7 @@
               "RelativeDocumentMoniker": "Table.cs",
               "ToolTip": "F:\\Semester 4\\DB Project\\C#\\Table.cs",
               "RelativeToolTip": "Table.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAgAAAA+AAAAAAAAAA==",
+              "ViewState": "AgIAAMsAAAAAAAAAAAAhwOAAAAAhAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-03-22T21:39:48.407Z",
               "EditorCaption": ""
@@ -132,7 +131,7 @@
               "RelativeDocumentMoniker": "Program.cs",
               "ToolTip": "F:\\Semester 4\\DB Project\\C#\\Program.cs",
               "RelativeToolTip": "Program.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABUAAAAjAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-03-22T20:57:37.508Z",
               "EditorCaption": ""

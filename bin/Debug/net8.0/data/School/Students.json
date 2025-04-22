@@ -75,8 +75,14 @@
       {
         "$id": "12",
         "id": "3",
-        "name": "C",
-        "dept_id": "101"
+        "name": "Clarke",
+        "dept_id": "102"
+      },
+      {
+        "$id": "13",
+        "id": "4",
+        "name": "David",
+        "dept_id": null
       }
     ]
   }

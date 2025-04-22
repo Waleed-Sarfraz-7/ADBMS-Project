@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using ConsoleApp1;
 
 class QueryProcessor
@@ -423,7 +424,28 @@ class QueryProcessor
             return;
         }
 
-        // 1. Extract columns
+        // 1. Extract WHERE and ORDER BY clause if present
+        string whereClause = null;
+        string orderByColumn = null;
+        bool orderByDescending = false;
+
+        int whereIndex = Array.FindIndex(parts, p => p.Equals("WHERE", StringComparison.OrdinalIgnoreCase));
+        int orderIndex = Array.FindIndex(parts, p => p.Equals("ORDER", StringComparison.OrdinalIgnoreCase));
+
+        if (orderIndex != -1 && orderIndex + 2 < parts.Length && parts[orderIndex + 1].Equals("BY", StringComparison.OrdinalIgnoreCase))
+        {
+            orderByColumn = parts[orderIndex + 2];
+            orderByDescending = orderIndex + 3 < parts.Length && parts[orderIndex + 3].Equals("DESC", StringComparison.OrdinalIgnoreCase);
+        }
+
+        if (whereIndex != -1)
+        {
+            int start = whereIndex + 1;
+            int end = (orderIndex == -1) ? parts.Length : orderIndex;
+            whereClause = string.Join(" ", parts.Skip(start).Take(end - start));
+        }
+
+        // 2. Extract columns
         int fromIndex = Array.IndexOf(parts, "FROM");
         if (fromIndex == -1)
         {
@@ -431,14 +453,14 @@ class QueryProcessor
             return;
         }
 
-        var selectedColumns = parts.Skip(1).Take(fromIndex - 1).ToList();
+        var selectedColumns = parts.Skip(1).Take(fromIndex - 1).Where(p => p != ",").ToList();
         bool selectAll = selectedColumns.Count == 1 && selectedColumns[0] == "*";
 
-        // 2. Handle JOIN query
+        // 3. Handle JOIN query
         if (parts.Contains("JOIN"))
         {
             string table1 = parts[fromIndex + 1];
-            string joinType = parts[fromIndex + 2].ToUpper() == "JOIN" ? "INNER" : parts[fromIndex + 2].ToUpper(); // INNER, LEFT, RIGHT, FULL
+            string joinType = parts[fromIndex + 2].ToUpper() == "JOIN" ? "INNER" : parts[fromIndex + 2].ToUpper();
             string table2 = joinType == "INNER" ? parts[fromIndex + 3] : parts[fromIndex + 4];
 
             int onIndex = Array.IndexOf(parts, "ON");
@@ -464,6 +486,20 @@ class QueryProcessor
 
             var results = ExecuteJoinQuery(leftTable, rightTable, leftColumn, rightColumn, joinType, database);
 
+            // Apply WHERE clause
+            if (!string.IsNullOrEmpty(whereClause))
+            {
+                results = results.Where(row => EvaluateWhereClause(row, whereClause)).ToList();
+            }
+
+            // Apply ORDER BY
+            if (!string.IsNullOrEmpty(orderByColumn))
+            {
+                results = orderByDescending
+                    ? results.OrderByDescending(r => r.ContainsKey(orderByColumn) ? r[orderByColumn] : null).ToList()
+                    : results.OrderBy(r => r.ContainsKey(orderByColumn) ? r[orderByColumn] : null).ToList();
+            }
+
             // Print results
             foreach (var row in results)
             {
@@ -475,7 +511,7 @@ class QueryProcessor
             return;
         }
 
-        // 3. Handle Simple SELECT (no join)
+        // 4. Handle Simple SELECT (no JOIN)
         string tableName = parts[fromIndex + 1];
         if (!database.Tables.TryGetValue(tableName, out var table))
         {
@@ -483,7 +519,23 @@ class QueryProcessor
             return;
         }
 
-        foreach (var row in table.Rows)
+        var rows = table.Rows;
+
+        // Apply WHERE clause
+        if (!string.IsNullOrEmpty(whereClause))
+        {
+            rows = rows.Where(row => EvaluateWhereClause(row, whereClause)).ToList();
+        }
+
+        // Apply ORDER BY
+        if (!string.IsNullOrEmpty(orderByColumn))
+        {
+            rows = orderByDescending
+                ? rows.OrderByDescending(r => r.ContainsKey(orderByColumn) ? r[orderByColumn] : null).ToList()
+                : rows.OrderBy(r => r.ContainsKey(orderByColumn) ? r[orderByColumn] : null).ToList();
+        }
+
+        foreach (var row in rows)
         {
             if (selectAll)
             {
@@ -507,16 +559,125 @@ class QueryProcessor
     }
 
 
+    private List<Dictionary<string, string>> ApplyOrderBy(List<Dictionary<string, string>> rows, string clause)
+    {
+        var columns = clause.Split(',')
+            .Select(s =>
+            {
+                var parts = s.Trim().Split(' ');
+                string col = parts[0];
+                bool asc = parts.Length == 1 || !parts[1].Equals("DESC", StringComparison.OrdinalIgnoreCase);
+                return (col, asc);
+            }).ToList();
+
+        // Apply ordering by chaining ThenBy/ThenByDescending
+        IOrderedEnumerable<Dictionary<string, string>> sorted = null;
+
+        for (int i = 0; i < columns.Count; i++)
+        {
+            var (col, asc) = columns[i];
+            if (i == 0)
+            {
+                sorted = asc
+                    ? rows.OrderBy(r => r.ContainsKey(col) ? r[col] : null)
+                    : rows.OrderByDescending(r => r.ContainsKey(col) ? r[col] : null);
+            }
+            else
+            {
+                sorted = asc
+                    ? sorted.ThenBy(r => r.ContainsKey(col) ? r[col] : null)
+                    : sorted.ThenByDescending(r => r.ContainsKey(col) ? r[col] : null);
+            }
+        }
+
+        return sorted?.ToList() ?? rows;
+    }
+
+    private bool EvaluateWhereClause(Dictionary<string, string> row, string condition)
+    {
+        condition = condition.Replace(" not ", " NOT ", StringComparison.OrdinalIgnoreCase)
+                             .Replace(" and ", " AND ", StringComparison.OrdinalIgnoreCase)
+                             .Replace(" or ", " OR ", StringComparison.OrdinalIgnoreCase);
+
+        var expr = condition.Split(new[] { " OR " }, StringSplitOptions.None);
+        foreach (var orBlock in expr)
+        {
+            var ands = orBlock.Split(new[] { " AND " }, StringSplitOptions.None);
+            bool allTrue = true;
+
+            foreach (var clause in ands)
+            {
+                string trimmed = clause.Trim();
+
+                bool negate = false;
+                if (trimmed.StartsWith("NOT ", StringComparison.OrdinalIgnoreCase))
+                {
+                    negate = true;
+                    trimmed = trimmed.Substring(4).Trim();
+                }
+
+                string[] operators = new[] { ">=", "<=", "!=", "=", ">", "<" };
+                string op = operators.FirstOrDefault(o => trimmed.Contains(o));
+                if (op == null)
+                {
+                    Console.WriteLine($"Unsupported operator in WHERE clause: {trimmed}");
+                    return false;
+                }
+
+                var parts = trimmed.Split(new[] { op }, StringSplitOptions.None);
+                string column = parts[0].Trim();
+                string value = parts[1].Trim();
+
+                if (!row.ContainsKey(column))
+                    return false;
+
+                string cell = row[column];
+
+                int comparison = string.Compare(cell, value, StringComparison.OrdinalIgnoreCase);
+                bool result = op switch
+                {
+                    "=" => cell == value,
+                    "!=" => cell != value,
+                    ">" => comparison > 0,
+                    "<" => comparison < 0,
+                    ">=" => comparison >= 0,
+                    "<=" => comparison <= 0,
+                    _ => false
+                };
+
+                if (negate) result = !result;
+
+                if (!result)
+                {
+                    allTrue = false;
+                    break;
+                }
+            }
+
+            if (allTrue) return true;
+        }
+
+        return false;
+    }
+
 
     private void HandleUpdateQuery(string[] parts)
     {
-        if (parts.Length < 6 || !parts.Contains("set") || !parts.Contains("where"))
+        string query = string.Join(" ", parts);
+        string pattern = @"update\s+(\w+)\s+set\s+(.+?)\s+where\s+(.+?)(?:\s+order\s+by\s+(.+))?$";
+        var match = Regex.Match(query, pattern, RegexOptions.IgnoreCase);
+
+        if (!match.Success)
         {
-            Console.WriteLine("Syntax Error: Use UPDATE <table_name> SET column=value WHERE column=value");
+            Console.WriteLine("Syntax Error: Use UPDATE <table> SET col=val,... WHERE condition [ORDER BY col ASC|DESC]");
             return;
         }
 
-        string tableName = parts[1];
+        string tableName = match.Groups[1].Value;
+        string setClause = match.Groups[2].Value;
+        string whereClause = match.Groups[3].Value;
+        string orderByClause = match.Groups[4].Success ? match.Groups[4].Value : null;
+
         if (!database.Tables.ContainsKey(tableName))
         {
             Console.WriteLine($"Table '{tableName}' does not exist.");
@@ -525,57 +686,91 @@ class QueryProcessor
 
         var table = database.Tables[tableName];
 
-        int setIndex = Array.FindIndex(parts, p => p.ToLower() == "set");
-        int whereIndex = Array.FindIndex(parts, p => p.ToLower() == "where");
-
-        string[] setPair = parts[setIndex + 1].Split('=');
-        if (setPair.Length != 2)
+        // Parse SET assignments
+        Dictionary<string, string> updatedValues = new();
+        foreach (var assignment in setClause.Split(','))
         {
-            Console.WriteLine("Invalid SET clause.");
+            var pair = assignment.Split('=');
+            if (pair.Length != 2)
+            {
+                Console.WriteLine("Invalid SET clause format.");
+                return;
+            }
+            updatedValues[pair[0].Trim()] = pair[1].Trim();
+        }
+
+        // Filter rows matching the WHERE clause
+        var matchingRows = table.Rows
+            .Where(row => EvaluateWhereClause(row, whereClause))
+            .ToList();
+
+        if (!matchingRows.Any())
+        {
+            Console.WriteLine("No matching rows found for update.");
             return;
         }
 
-        string setCol = setPair[0].Trim();
-        string setVal = setPair[1].Trim();
-
-        string[] wherePair = parts[whereIndex + 1].Split('=');
-        if (wherePair.Length != 2)
+        // Apply ORDER BY if specified
+        if (!string.IsNullOrEmpty(orderByClause))
         {
-            Console.WriteLine("Invalid WHERE clause.");
+            matchingRows = ApplyOrderBy(matchingRows, orderByClause);
+        }
+
+        var pkColumn = table.Columns.FirstOrDefault(c => c.Constraint.Has(ConstraintType.PrimaryKey));
+        if (pkColumn == null)
+        {
+            Console.WriteLine("Primary key not defined.");
             return;
         }
 
-        string whereCol = wherePair[0].Trim();
-        string whereVal = wherePair[1].Trim();
-
-        var matchedRows = table.Rows.Where(r => r.ContainsKey(whereCol) && r[whereCol] == whereVal).ToList();
-        if (matchedRows.Count == 0)
+        foreach (var row in matchingRows)
         {
-            Console.WriteLine("No matching rows found to update.");
-            return;
+            if (!row.TryGetValue(pkColumn.Name, out var primaryKeyValue))
+            {
+                Console.WriteLine("Missing primary key value.");
+                continue;
+            }
+
+            // Log transaction
+            if (currentTransactionId.HasValue)
+            {
+                var before = new Dictionary<string, string>(row);
+                var after = new Dictionary<string, string>(row);
+                foreach (var kvp in updatedValues)
+                    after[kvp.Key] = kvp.Value;
+
+                transactionManager.LogOperation(
+                    currentTransactionId.Value,
+                    "update",
+                    tableName,
+                    new() { before },
+                    new() { after },
+                    database
+                );
+            }
+
+            try
+            {
+                table.UpdateRow(primaryKeyValue, updatedValues);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Update failed: {ex.Message}");
+            }
         }
 
-        if (currentTransactionId.HasValue)
-        {
-            var beforeRows = matchedRows.Select(r => new Dictionary<string, string>(r)).ToList();
-            var afterRows = matchedRows.Select(r => { var copy = new Dictionary<string, string>(r); copy[setCol] = setVal; return copy; }).ToList();
-            transactionManager.LogOperation(currentTransactionId.Value,"update", tableName, beforeRows, afterRows,database);
-        }
-
-        foreach (var row in matchedRows)
-        {
-            row[setCol] = setVal;
-        }
-
-        Console.WriteLine($"{matchedRows.Count} row(s) updated successfully in '{tableName}'.");
+        Console.WriteLine($"{matchingRows.Count} row(s) updated in '{tableName}'.");
     }
+
+
 
 
     private void HandleDeleteQuery(string[] parts)
     {
-        if (parts.Length < 4 || parts[1].ToLower() != "from")
+        if (parts.Length < 4 || !parts[0].Equals("delete", StringComparison.OrdinalIgnoreCase) ||
+            !parts[1].Equals("from", StringComparison.OrdinalIgnoreCase))
         {
-            Console.WriteLine("Syntax Error: Use DELETE FROM <table_name> WHERE column=value");
+            Console.WriteLine("Syntax Error: Use DELETE FROM <table_name> WHERE <condition>");
             return;
         }
 
@@ -586,35 +781,75 @@ class QueryProcessor
             return;
         }
 
-        string[] whereClause = parts[4].Split('=');
-        string whereColumn = whereClause[0].Trim();
-        string whereValue = whereClause[1].Trim();
+        var table = database.Tables[tableName];
 
-        var rowsToDelete = database.Tables[tableName].Rows
-            .Where(r => r.ContainsKey(whereColumn) && r[whereColumn] == whereValue)
+        // Reconstruct full query to parse WHERE clause easily
+        string fullQuery = string.Join(" ", parts);
+        int whereIndex = fullQuery.IndexOf(" where ", StringComparison.OrdinalIgnoreCase);
+        if (whereIndex == -1)
+        {
+            Console.WriteLine("Syntax Error: Missing WHERE clause.");
+            return;
+        }
+
+        string condition = fullQuery.Substring(whereIndex + 7).Trim(); // after "WHERE "
+
+        // Get primary key column
+        var pkColumn = table.Columns.FirstOrDefault(c => c.Constraint.Has(ConstraintType.PrimaryKey));
+        if (pkColumn == null)
+        {
+            Console.WriteLine("No primary key defined for the table.");
+            return;
+        }
+
+        // Evaluate and collect rows to delete
+        var rowsToDelete = table.Rows
+            .Where(row => EvaluateWhereClause(row, condition))
             .ToList();
 
         if (rowsToDelete.Count == 0)
         {
-            Console.WriteLine("No matching rows found to delete.");
+            Console.WriteLine("No matching rows found for deletion.");
             return;
         }
 
-        if (currentTransactionId.HasValue)
+        foreach (var row in rowsToDelete)
         {
-            var beforeRows = rowsToDelete.Select(r => new Dictionary<string, string>(r)).ToList();
-            transactionManager.LogOperation(currentTransactionId.Value,"delete", tableName, beforeRows, null,database);
+            if (!row.ContainsKey(pkColumn.Name))
+            {
+                Console.WriteLine("Primary key value missing in a matching row. Skipping deletion for that row.");
+                continue;
+            }
+
+            string pkValue = row[pkColumn.Name];
+
+            // Transaction logging (before snapshot)
+            if (currentTransactionId.HasValue)
+            {
+                var beforeSnapshot = new Dictionary<string, string>(row);
+                transactionManager.LogOperation(
+                    currentTransactionId.Value,
+                    "delete",
+                    tableName,
+                    new List<Dictionary<string, string>> { beforeSnapshot },
+                    null,
+                    database
+                );
+            }
+
+            try
+            {
+                table.DeleteRow(pkValue);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Delete failed for row with {pkColumn.Name} = {pkValue}: {ex.Message}");
+            }
         }
 
-        database.Tables[tableName].Rows.RemoveAll(r => r.ContainsKey(whereColumn) && r[whereColumn] == whereValue);
         Console.WriteLine($"{rowsToDelete.Count} row(s) deleted successfully from '{tableName}'.");
     }
-    public void HandleReadTransaction(string[] parts)
-    {
-        string tableName = parts[1];
-        if (!database.Tables.ContainsKey(tableName)) {
-            Console.WriteLine("Table not exist");
-        }
 
-    }
+
+
 }
