@@ -21,6 +21,7 @@ class OperationLog
     public string TableName { get; set; }
     public List<(int RowIndex, Dictionary<string, string> Row)> Before { get; set; }
     public List<(int RowIndex, Dictionary<string, string> Row)> After { get; set; }
+    public Table? TempTableForDDL;
 }
 
 class TransactionManager
@@ -49,6 +50,25 @@ class TransactionManager
 
         var beforeWithIndex = new List<(int, Dictionary<string, string>)>();
         var afterWithIndex = new List<(int, Dictionary<string, string>)>();
+        Table? tempDDLTable = null;
+
+        if (operation == "create")
+        {
+            if (db.Tables.TryGetValue(tableName, out var createdTable))
+            {
+                tempDDLTable = createdTable; // Save the table snapshot for rollback
+            }
+
+            transaction.Operations.Add(new OperationLog
+            {
+                Operation = operation,
+                TableName = tableName,
+                TempTableForDDL = tempDDLTable
+            });
+
+            return;
+        }
+
 
         if (db.Tables.TryGetValue(tableName, out var table))
         {
@@ -58,6 +78,10 @@ class TransactionManager
                 {
                     int index = table.Rows.FindIndex(r => AreRowsEqual(r, row));
                     beforeWithIndex.Add((index, row));
+
+                    // Lock for delete and update
+                    if (operation == "delete" || operation == "update")
+                        concurrencyControl.AcquireWriteLock(tableName, index, transactionId);
                 }
             }
 
@@ -66,6 +90,7 @@ class TransactionManager
                 foreach (var row in after)
                 {
                     int index = table.Rows.FindIndex(r => AreRowsEqual(r, row));
+
                     if (operation == "insert")
                         transaction.InsertedRows.Add((tableName, row));
 
@@ -73,21 +98,20 @@ class TransactionManager
                     afterWithIndex.Add((index, row));
                 }
             }
-        }
 
-        transaction.Operations.Add(new OperationLog
-        {
-            Operation = operation,
-            TableName = tableName,
-            Before = beforeWithIndex,
-            After = afterWithIndex
-        });
+            transaction.Operations.Add(new OperationLog
+            {
+                Operation = operation,
+                TableName = tableName,
+                Before = beforeWithIndex,
+                After = afterWithIndex
+            });
+        }
     }
 
     public List<Dictionary<string, string>> GetVisibleRows(Guid transactionId, string tableName, Database db)
     {
         if (!db.Tables.ContainsKey(tableName)) return new List<Dictionary<string, string>>();
-
         var table = db.Tables[tableName];
         var visibleRows = new List<Dictionary<string, string>>();
 
@@ -150,6 +174,18 @@ class TransactionManager
 
         foreach (var op in transaction.Operations)
         {
+            if (op.Operation == "create" && op.TempTableForDDL != null)
+            {
+                // Rollback table creation
+                if (database.Tables.ContainsKey(op.TableName))
+                {
+                    database.Tables.Remove(op.TableName);
+                    Console.WriteLine($"Rolled back table creation: {op.TableName}");
+                }
+
+                continue;
+            }
+
             if (!database.Tables.ContainsKey(op.TableName)) continue;
             var table = database.Tables[op.TableName];
 

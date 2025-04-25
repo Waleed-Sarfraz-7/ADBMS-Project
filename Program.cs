@@ -20,18 +20,18 @@ class Program
             string query = Console.ReadLine();
             if (query.ToLower() == "exit") break;
             qp.ExecuteQuery(query);
-           
-           
-            
+
+
+
 
         }
 
 
-        //        var dbms = StorageManager.LoadDBMS();
-        //        var cc = new ConcurrencyControl();
-        //        var tm =  new TransactionManager(cc);
-        //        dbms.UseDatabase("School");
-        //        var db = dbms.GetCurrentDatabase();
+        //var dbms = StorageManager.LoadDBMS();
+        //var cc = new ConcurrencyControl();
+        //var tm = new TransactionManager(cc);
+        //dbms.UseDatabase("School");
+        //var db = dbms.GetCurrentDatabase();
         //        var departmentColumns = new List<Column>
         //{
         //    new Column("id", "INT", constraint: new ColumnConstraint
@@ -90,23 +90,23 @@ class Program
         //Guid tx1 = tm.BeginTransaction();
         //var row1 = new Dictionary<string, string>
         //{
-        //  { "id", "4" },
-        //  { "name", "Bob" },
-        //  { "isStudent", "false" }
+        //  { "id", "5" },
+        //  { "name", "david" },
+        //  { "dept_id", "102" }
         //};
         //tm.LogOperation(tx1, "insert", "Students", null, new List<Dictionary<string, string>> { row1 }, db);
         //db.Tables["Students"].InsertRow(row1);
 
         //var row2 = new Dictionary<string, string>
         //{
-        //  { "id", "5" },
-        //  { "name", "Clarke" },
-        //  { "isStudent", "false" }
+        //  { "id", "6" },
+        //  { "name", "Eoin" },
+        //  { "dept_id", "102" }
         //};
         //Guid tx2 = tm.BeginTransaction();
         //tm.LogOperation(tx2, "insert", "Students", null, new List<Dictionary<string, string>> { row2 }, db);
         //db.Tables["Students"].InsertRow(row2);
-        // tm.RollbackTransaction(tx1,db);
+        //tm.RollbackTransaction(tx1, db);
         //var visible1 = tm.GetVisibleRows(tx2, "Students", db);
         //foreach (var row in visible1)
         //    Console.WriteLine(string.Join(", ", row.Select(kv => $"{kv.Key}={kv.Value}")));
@@ -114,7 +114,7 @@ class Program
         //var visible = tm.GetVisibleRows(tx1, "Students", db);
         //foreach (var row in visible)
         //    Console.WriteLine(string.Join(", ", row.Select(kv => $"{kv.Key}={kv.Value}")));
-        StorageManager.SaveDBMS(dBMS);
+         StorageManager.SaveDBMS(dBMS);
         //var db = new MVCCDatabase();
         //db.CreateTable("users");
 

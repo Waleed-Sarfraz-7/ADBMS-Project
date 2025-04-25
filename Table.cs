@@ -8,6 +8,8 @@ class Table
     public List<Column> Columns { get; set; }
     public List<Dictionary<string, string>> Rows { get; set; }
 
+    public Dictionary<string, Index> Indexes { get; set; } = new();
+
     // 👇 NEW: Reference to parent Database (used for FK validation)
     [JsonIgnore]
     public Database ParentDatabase { get; set; }
@@ -21,7 +23,32 @@ class Table
     }
     public Table(){}
 
+    public void CreateIndex(string columnName)
+    {
+        var index = new Index(columnName);
+        for (int i = 0; i < Rows.Count; i++)
+        {
+            if (int.TryParse(Rows[i][columnName], out int key))
+                index.AddToIndex(key, Rows[i]);
+        }
 
+        Indexes[columnName] = index;
+    }
+    public void RestoreIndexes()
+    {
+        foreach (var index in Indexes.Values)
+        {
+            index.RestoreAfterLoad();
+        }
+    }
+    public object LookupUsingIndex(string columnName, int key)
+    {
+        if (Indexes.TryGetValue(columnName, out var index))
+        {
+            return index.Lookup(key);
+        }
+        return null;
+    }
     public void SetParentDatabase(Database db)
     {
         ParentDatabase = db;

@@ -10,7 +10,7 @@ class QueryProcessor
     private Database database;
     private TransactionManager transactionManager;
     private readonly DBMS dbms;
-    private Guid? currentTransactionId = null; // You should manage this at the class level
+    private Guid? currentTransactionId = null; 
 
     public QueryProcessor( TransactionManager tm, DBMS dBMS)
     {
@@ -103,9 +103,6 @@ class QueryProcessor
         foreach (var leftRow in leftTable.Rows)
         {
             bool matchFound = false;
-            Console.WriteLine("Left Row Keys: " + string.Join(", ", leftRow.Keys));
-
-
             foreach (var rightRow in rightTable.Rows)
             {
                 if (leftRow.TryGetValue(leftJoinColumn, out string leftValue) &&
@@ -357,9 +354,24 @@ class QueryProcessor
                 return;
             }
 
+            // Create the table
             database.CreateTable(tableName, columns);
             Console.WriteLine($"Table '{tableName}' created successfully in database '{database.Name}'.");
+
+            // ✅ Transaction Logging for CREATE TABLE
+            if (currentTransactionId.HasValue)
+            {
+                transactionManager.LogOperation(
+                    currentTransactionId.Value,
+                    "create",
+                    tableName,
+                    null,
+                    null,
+                    database
+                );
+            }
         }
+
 
     }
     public Database GetQPDatabase()
@@ -424,12 +436,16 @@ class QueryProcessor
             return;
         }
 
-        // 1. Extract WHERE and ORDER BY clause if present
+        // 1. Extract WHERE, GROUP BY, HAVING, and ORDER BY clauses if present
         string whereClause = null;
+        string groupByClause = null;
+        string havingClause = null;
         string orderByColumn = null;
         bool orderByDescending = false;
 
         int whereIndex = Array.FindIndex(parts, p => p.Equals("WHERE", StringComparison.OrdinalIgnoreCase));
+        int groupByIndex = Array.FindIndex(parts, p => p.Equals("GROUP", StringComparison.OrdinalIgnoreCase));
+        int havingIndex = Array.FindIndex(parts, p => p.Equals("HAVING", StringComparison.OrdinalIgnoreCase));
         int orderIndex = Array.FindIndex(parts, p => p.Equals("ORDER", StringComparison.OrdinalIgnoreCase));
 
         if (orderIndex != -1 && orderIndex + 2 < parts.Length && parts[orderIndex + 1].Equals("BY", StringComparison.OrdinalIgnoreCase))
@@ -438,14 +454,28 @@ class QueryProcessor
             orderByDescending = orderIndex + 3 < parts.Length && parts[orderIndex + 3].Equals("DESC", StringComparison.OrdinalIgnoreCase);
         }
 
+        if (groupByIndex != -1 && groupByIndex + 1 < parts.Length && parts[groupByIndex + 1].Equals("BY", StringComparison.OrdinalIgnoreCase))
+        {
+            int start = groupByIndex + 2;
+            int end = (havingIndex != -1) ? havingIndex : (orderIndex != -1 ? orderIndex : parts.Length);
+            groupByClause = string.Join(" ", parts.Skip(start).Take(end - start));
+        }
+
+        if (havingIndex != -1)
+        {
+            int start = havingIndex + 1;
+            int end = (orderIndex != -1) ? orderIndex : parts.Length;
+            havingClause = string.Join(" ", parts.Skip(start).Take(end - start));
+        }
+
         if (whereIndex != -1)
         {
             int start = whereIndex + 1;
-            int end = (orderIndex == -1) ? parts.Length : orderIndex;
+            int end = (groupByIndex == -1) ? (orderIndex == -1 ? parts.Length : orderIndex) : groupByIndex;
             whereClause = string.Join(" ", parts.Skip(start).Take(end - start));
         }
 
-        // 2. Extract columns
+        // 2. Extract columns and table name
         int fromIndex = Array.IndexOf(parts, "FROM");
         if (fromIndex == -1)
         {
@@ -492,12 +522,22 @@ class QueryProcessor
                 results = results.Where(row => EvaluateWhereClause(row, whereClause)).ToList();
             }
 
+            // Apply GROUP BY
+            if (!string.IsNullOrEmpty(groupByClause))
+            {
+                results = ApplyGroupBy(results, groupByClause);
+            }
+
+            // Apply HAVING clause
+            if (!string.IsNullOrEmpty(havingClause))
+            {
+                results = results.Where(row => EvaluateWhereClause(row, havingClause)).ToList();
+            }
+
             // Apply ORDER BY
             if (!string.IsNullOrEmpty(orderByColumn))
             {
-                results = orderByDescending
-                    ? results.OrderByDescending(r => r.ContainsKey(orderByColumn) ? r[orderByColumn] : null).ToList()
-                    : results.OrderBy(r => r.ContainsKey(orderByColumn) ? r[orderByColumn] : null).ToList();
+                results = ApplyOrderBy(results, orderByColumn, orderByDescending);
             }
 
             // Print results
@@ -527,14 +567,25 @@ class QueryProcessor
             rows = rows.Where(row => EvaluateWhereClause(row, whereClause)).ToList();
         }
 
+        // Apply GROUP BY
+        if (!string.IsNullOrEmpty(groupByClause))
+        {
+            rows = ApplyGroupBy(rows, groupByClause);
+        }
+
+        // Apply HAVING clause
+        if (!string.IsNullOrEmpty(havingClause))
+        {
+            rows = rows.Where(row => EvaluateWhereClause(row, havingClause)).ToList();
+        }
+
         // Apply ORDER BY
         if (!string.IsNullOrEmpty(orderByColumn))
         {
-            rows = orderByDescending
-                ? rows.OrderByDescending(r => r.ContainsKey(orderByColumn) ? r[orderByColumn] : null).ToList()
-                : rows.OrderBy(r => r.ContainsKey(orderByColumn) ? r[orderByColumn] : null).ToList();
+            rows = ApplyOrderBy(rows, orderByColumn, orderByDescending);
         }
 
+        // Print results
         foreach (var row in rows)
         {
             if (selectAll)
@@ -558,39 +609,37 @@ class QueryProcessor
         }
     }
 
-
-    private List<Dictionary<string, string>> ApplyOrderBy(List<Dictionary<string, string>> rows, string clause)
+    private List<Dictionary<string, string>> ApplyOrderBy(List<Dictionary<string, string>> rows, string orderByColumn, bool descending)
     {
-        var columns = clause.Split(',')
-            .Select(s =>
-            {
-                var parts = s.Trim().Split(' ');
-                string col = parts[0];
-                bool asc = parts.Length == 1 || !parts[1].Equals("DESC", StringComparison.OrdinalIgnoreCase);
-                return (col, asc);
-            }).ToList();
+        return descending
+            ? rows.OrderByDescending(r => r.ContainsKey(orderByColumn) ? r[orderByColumn] : null).ToList()
+            : rows.OrderBy(r => r.ContainsKey(orderByColumn) ? r[orderByColumn] : null).ToList();
+    }
+    private List<Dictionary<string, string>> ApplyGroupBy(List<Dictionary<string, string>> rows, string groupByClause)
+    {
+        var groupByColumns = groupByClause.Split(',').Select(c => c.Trim()).ToList();
+        var grouped = rows.GroupBy(row => string.Join("|", groupByColumns.Select(col => row[col])));
 
-        // Apply ordering by chaining ThenBy/ThenByDescending
-        IOrderedEnumerable<Dictionary<string, string>> sorted = null;
+        var groupedRows = new List<Dictionary<string, string>>();
 
-        for (int i = 0; i < columns.Count; i++)
+        foreach (var group in grouped)
         {
-            var (col, asc) = columns[i];
-            if (i == 0)
+            var first = group.First();
+            var groupedRow = new Dictionary<string, string>();
+
+            // Add grouping key fields
+            foreach (var col in groupByColumns)
             {
-                sorted = asc
-                    ? rows.OrderBy(r => r.ContainsKey(col) ? r[col] : null)
-                    : rows.OrderByDescending(r => r.ContainsKey(col) ? r[col] : null);
+                groupedRow[col] = first[col];
             }
-            else
-            {
-                sorted = asc
-                    ? sorted.ThenBy(r => r.ContainsKey(col) ? r[col] : null)
-                    : sorted.ThenByDescending(r => r.ContainsKey(col) ? r[col] : null);
-            }
+
+            // Example: aggregate COUNT
+            groupedRow["COUNT"] = group.Count().ToString();
+
+            groupedRows.Add(groupedRow);
         }
 
-        return sorted?.ToList() ?? rows;
+        return groupedRows;
     }
 
     private bool EvaluateWhereClause(Dictionary<string, string> row, string condition)
@@ -711,10 +760,10 @@ class QueryProcessor
         }
 
         // Apply ORDER BY if specified
-        if (!string.IsNullOrEmpty(orderByClause))
-        {
-            matchingRows = ApplyOrderBy(matchingRows, orderByClause);
-        }
+        //if (!string.IsNullOrEmpty(orderByClause))
+        //{
+        //    matchingRows = ApplyOrderBy(matchingRows, orderByClause);
+        //}
 
         var pkColumn = table.Columns.FirstOrDefault(c => c.Constraint.Has(ConstraintType.PrimaryKey));
         if (pkColumn == null)

@@ -1,6 +1,6 @@
 {
   "$id": "1",
-  "Name": "Students",
+  "Name": "Departments",
   "Columns": {
     "$id": "2",
     "$values": [
@@ -37,47 +37,25 @@
         "ParentTable": {
           "$ref": "1"
         }
-      },
-      {
-        "$id": "7",
-        "Name": "dept_id",
-        "Data_Type": "INT",
-        "MaxLength": null,
-        "Constraint": {
-          "$id": "8",
-          "Constraints": 8,
-          "DefaultValue": null,
-          "CheckExpression": null,
-          "ReferenceTable": "Departments",
-          "ReferenceColumn": "id"
-        },
-        "ParentTable": {
-          "$ref": "1"
-        }
       }
     ]
   },
   "Rows": {
-    "$id": "9",
+    "$id": "7",
     "$values": [
       {
-        "$id": "10",
-        "id": "1",
-        "name": "Ali",
-        "dept_id": "101"
+        "$id": "8",
+        "id": "101",
+        "name": "CS"
       },
       {
-        "$id": "11",
-        "id": "2",
-        "name": "Bob",
-        "dept_id": "101"
-      },
-      {
-        "$id": "12",
-        "id": "3",
-        "name": "Clarke",
-        "dept_id": "102"
+        "$id": "9",
+        "id": "102",
+        "name": "EE"
       }
     ]
+  },
+  "Indexes": {
+    "$id": "10"
   }
 }
