@@ -1,17 +1,29 @@
-﻿public class SerializableBTree:Index
+﻿using System.Runtime.Serialization;
+using System.Text.Json.Serialization;
+[DataContract]
+public class SerializableBTree : Index
 {
+    [DataMember]
     public SerializableBTreeNode Root { get; set; }
+    [DataMember]
     public int Degree { get; set; }
 }
-
-
+[DataContract]
 public class SerializableBTreeNode
 {
-    public int[] Keys { get; set; }
+    [DataMember]
+    public object[] Keys { get; set; }
+    [DataMember]
+    [JsonIgnore]
     public object[] Values { get; set; }
+    [DataMember]
+    public int[] ValueReferences { get; set; }
+    [DataMember]
     public List<SerializableBTreeNode> Children { get; set; } = new();
+    [DataMember]
     public bool IsLeaf { get; set; }
 }
+[DataContract]
 public class BTree
 {
     private BTreeNode root;
@@ -23,7 +35,7 @@ public class BTree
         root = new BTreeNode(degree, true);
     }
 
-    public void Insert(int key, object value)
+    public void Insert(IComparable key, object value)
     {
         if (root.KeyCount == 2 * degree - 1)
         {
@@ -36,10 +48,11 @@ public class BTree
         root.InsertNonFull(key, value);
     }
 
-    public object Search(int key)
+    public object Search(IComparable key)
     {
         return root.Search(key);
     }
+
     public SerializableBTree ToSerializable()
     {
         return new SerializableBTree
@@ -54,8 +67,9 @@ public class BTree
         var sNode = new SerializableBTreeNode
         {
             Keys = node.Keys.Take(node.KeyCount).ToArray(),
-            Values = node.Values.Take(node.KeyCount).ToArray(),
-            IsLeaf = node.IsLeaf
+            Values = node.Values.Take(node.KeyCount).ToArray(),   // Keep for runtime
+            IsLeaf = node.IsLeaf,
+            ValueReferences = Enumerable.Range(0, node.KeyCount).ToArray()   // Save dummy simple references (or your actual logic)
         };
 
         if (!node.IsLeaf)
@@ -68,6 +82,7 @@ public class BTree
 
         return sNode;
     }
+
 
     public static BTree FromSerializable(SerializableBTree sTree)
     {
@@ -82,8 +97,11 @@ public class BTree
         {
             KeyCount = sNode.Keys.Length
         };
+
         sNode.Keys.CopyTo(node.Keys, 0);
-        sNode.Values.CopyTo(node.Values, 0);
+
+        // Values will be null initially, you can recover later if needed
+        node.Values = new object[2 * degree - 1];
 
         if (!sNode.IsLeaf)
         {
@@ -95,4 +113,5 @@ public class BTree
 
         return node;
     }
+
 }

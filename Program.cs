@@ -1,11 +1,12 @@
-﻿using ConsoleApp1;
+﻿using System.Diagnostics;
+using ConsoleApp1;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 
 class Program
 {
     static void Main()
     {
-        DBMS dBMS = StorageManager.LoadDBMS();
+        DBMS dBMS = BinaryStorageManager.LoadDBMS();
         var cc = new ConcurrencyControl();
         TransactionManager tm = new TransactionManager(cc);
         QueryProcessor qp = new QueryProcessor(tm, dBMS);
@@ -25,6 +26,7 @@ class Program
 
 
         }
+        
 
 
         //var dbms = StorageManager.LoadDBMS();
@@ -114,7 +116,7 @@ class Program
         //var visible = tm.GetVisibleRows(tx1, "Students", db);
         //foreach (var row in visible)
         //    Console.WriteLine(string.Join(", ", row.Select(kv => $"{kv.Key}={kv.Value}")));
-         StorageManager.SaveDBMS(dBMS);
+        BinaryStorageManager.SaveDBMS(dBMS);
         //var db = new MVCCDatabase();
         //db.CreateTable("users");
 

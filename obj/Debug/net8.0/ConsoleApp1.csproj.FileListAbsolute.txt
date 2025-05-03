@@ -127,3 +127,6 @@ F:\Semester 4\DB Project\C#\obj\Debug\net8.0\refint\ConsoleApp1.dll
 F:\Semester 4\DB Project\C#\obj\Debug\net8.0\ConsoleApp1.pdb
 F:\Semester 4\DB Project\C#\obj\Debug\net8.0\ConsoleApp1.genruntimeconfig.cache
 F:\Semester 4\DB Project\C#\obj\Debug\net8.0\ref\ConsoleApp1.dll
+F:\Semester 4\DB Project\C#\bin\Debug\net8.0\MessagePack.dll
+F:\Semester 4\DB Project\C#\bin\Debug\net8.0\MessagePack.Annotations.dll
+F:\Semester 4\DB Project\C#\bin\Debug\net8.0\Microsoft.NET.StringTools.dll

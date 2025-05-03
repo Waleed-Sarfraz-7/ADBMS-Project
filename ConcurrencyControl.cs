@@ -52,6 +52,26 @@ public class ConcurrencyControl
             locks[key] = (lck, txId, readOwners);
         }
     }
+    public void AcquireUpgradeableReadLock(string table, int rowId, Guid txId)
+    {
+        var key = (table, rowId);
+        lock (lockObj)
+        {
+            if (!locks.ContainsKey(key))
+            {
+                locks[key] = (new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion), null, new HashSet<Guid>());
+            }
+        }
+
+        var (lck, writeOwner, readOwners) = locks[key];
+        lck.EnterUpgradeableReadLock();
+
+        lock (lockObj)
+        {
+            locks[key] = (lck, writeOwner, readOwners.Append(txId).ToHashSet());
+        }
+    }
+
 
     public void ReleaseLocks(Guid txId)
     {

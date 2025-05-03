@@ -1,22 +1,18 @@
-﻿using ConsoleApp1;
-using System.Text.Json;
+﻿using System;
 using System.IO;
+using System.Runtime.Serialization;
+using System.Runtime.Serialization.Formatters.Binary;
+using System.Collections.Generic;
+using ConsoleApp1;
 
-class StorageManager
+[Serializable]
+class BinaryStorageManager
 {
-    private const string RootDataPath = "data";
+    private const string RootDataPath = "binary_data";
 
     public static void SaveDBMS(DBMS dbms)
     {
         Directory.CreateDirectory(RootDataPath);
-
-        // Configure JsonSerializerOptions to handle circular references
-        var options = new JsonSerializerOptions
-        {
-            WriteIndented = true,
-            ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.Preserve // This is the key fix
-        };
-
         foreach (var dbEntry in dbms.Databases)
         {
             string dbPath = Path.Combine(RootDataPath, dbEntry.Key);
@@ -27,21 +23,21 @@ class StorageManager
                 string tablePath = Path.Combine(dbPath, table.Key);
                 Directory.CreateDirectory(tablePath);
 
-                // Save the table data
-                string tableJson = JsonSerializer.Serialize(table.Value, options);
-                File.WriteAllText(Path.Combine(tablePath, $"{table.Key}.json"), tableJson);
+                // Save table with filtered constraints
+                Table cleanedTable = CleanTable(table.Value);
+                string tableFile = Path.Combine(tablePath, $"{table.Key}.bin");
+                SaveBinary(cleanedTable, tableFile);
 
-                // Save the indexes for the table
+                // Save indexes
                 if (table.Value.Indexes != null && table.Value.Indexes.Count > 0)
                 {
-                    string indexesPath = Path.Combine(tablePath, "indexes");
-                    Directory.CreateDirectory(indexesPath);
+                    string indexPath = Path.Combine(tablePath, "indexes");
+                    Directory.CreateDirectory(indexPath);
 
                     foreach (var index in table.Value.Indexes)
                     {
-                        // Serialize the index (BTree)
-                        string indexJson = JsonSerializer.Serialize(index.Value, options);
-                        File.WriteAllText(Path.Combine(indexesPath, $"{index.Key}.json"), indexJson);
+                        string indexFile = Path.Combine(indexPath, $"{index.Key}.bin");
+                        SaveBinary(index.Value, indexFile);
                     }
                 }
 
@@ -58,48 +54,33 @@ class StorageManager
 
         if (Directory.Exists(RootDataPath))
         {
-            // Traverse through each database directory
             foreach (var dbFolder in Directory.GetDirectories(RootDataPath))
             {
                 string dbName = Path.GetFileName(dbFolder);
                 Database db = new Database(dbName);
 
-                // Traverse through each table directory inside the current database
                 foreach (var tableFolder in Directory.GetDirectories(dbFolder))
                 {
                     string tableName = Path.GetFileName(tableFolder);
-                    string tableJsonFile = Path.Combine(tableFolder, $"{tableName}.json");
+                    string tableFile = Path.Combine(tableFolder, $"{tableName}.bin");
 
-                    if (File.Exists(tableJsonFile))
+                    if (File.Exists(tableFile))
                     {
-                        // Read the table data JSON
-                        string tableJson = File.ReadAllText(tableJsonFile);
-                        var options = new JsonSerializerOptions
-                        {
-                            ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.Preserve
-                        };
-
-                        // Deserialize the table object
-                        Table table = JsonSerializer.Deserialize<Table>(tableJson, options);
-
-                        // Set parent relationships for the table and columns
+                        Table table = LoadBinary<Table>(tableFile);
                         table.SetParentDatabase(db);
+
                         foreach (var column in table.Columns)
                         {
                             column.SetParentTable(table);
                         }
 
-                        // Load indexes for the table
                         LoadIndexesForTable(table, tableFolder);
-
-                        // Add the table to the database
                         db.Tables[table.Name] = table;
 
                         Console.WriteLine($"Loaded table '{table.Name}' into database '{dbName}'.");
                     }
                 }
 
-                // Add the database to the DBMS
                 dbms.Databases[dbName] = db;
                 Console.WriteLine($"Loaded database '{dbName}' into DBMS.");
             }
@@ -113,26 +94,12 @@ class StorageManager
     {
         string indexesFolder = Path.Combine(tableFolder, "indexes");
 
-        // Check if the indexes folder exists
         if (Directory.Exists(indexesFolder))
         {
-            foreach (var indexFile in Directory.GetFiles(indexesFolder, "*.json"))
+            foreach (var indexFile in Directory.GetFiles(indexesFolder, "*.bin"))
             {
-                // Read the index JSON file
-                string indexJson = File.ReadAllText(indexFile);
-
-                var options = new JsonSerializerOptions
-                {
-                    ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.Preserve
-                };
-
-                // Deserialize the index object (SerializableBTree)
-                SerializableBTree index = JsonSerializer.Deserialize<SerializableBTree>(indexJson, options);
-
-                // Get the index name from the file name (without extension)
+                SerializableBTree index = LoadBinary<SerializableBTree>(indexFile);
                 string indexName = Path.GetFileNameWithoutExtension(indexFile);
-
-                // Add the index to the table's index collection
                 table.Indexes[indexName] = index;
 
                 Console.WriteLine($"Loaded index '{indexName}' for table '{table.Name}'.");
@@ -140,4 +107,49 @@ class StorageManager
         }
     }
 
+    private static void SaveBinary<T>(T obj, string path)
+    {
+        using (FileStream stream = new FileStream(path, FileMode.Create))
+        {
+            var serializer = new DataContractSerializer(typeof(T));
+            serializer.WriteObject(stream, obj);
+        }
+    }
+
+    private static T LoadBinary<T>(string path)
+    {
+        using (FileStream stream = new FileStream(path, FileMode.Open))
+        {
+            var serializer = new DataContractSerializer(typeof(T));
+            return (T)serializer.ReadObject(stream);
+        }
+    }
+
+    private static Table CleanTable(Table table)
+    {
+        var newTable = new Table(table.Name, new List<Column>(), table.ParentDatabase)
+        {
+            Rows = table.Rows,
+            Indexes = table.Indexes
+        };
+
+        foreach (var col in table.Columns)
+        {
+            // Filter constraints: remove ConstraintType.None
+            var cleanConstraints = new ColumnConstraint
+            {
+                Constraints = col.Constraint.Constraints & ~ConstraintType.None,
+                DefaultValue = col.Constraint.DefaultValue,
+                CheckExpression = col.Constraint.CheckExpression,
+                ReferenceTable = col.Constraint.ReferenceTable,
+                ReferenceColumn = col.Constraint.ReferenceColumn
+            };
+
+            var newCol = new Column(col.Name, col.Data_Type, null, cleanConstraints);
+            newCol.SetParentTable(newTable);
+            newTable.Columns.Add(newCol);
+        }
+
+        return newTable;
+    }
 }

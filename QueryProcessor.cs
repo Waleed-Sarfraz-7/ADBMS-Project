@@ -218,7 +218,7 @@ class QueryProcessor
             string tableName = parts[2];
             string columnPart = string.Join(" ", parts.Skip(3));
             int start = columnPart.IndexOf('(');
-            int end = columnPart.IndexOf(')');
+            int end = columnPart.LastIndexOf(')');
 
             if (start == -1 || end == -1 || end <= start)
             {
@@ -233,7 +233,10 @@ class QueryProcessor
 
             foreach (string rawCol in columnDefs)
             {
-                string[] tokens = rawCol.Trim().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                string[] tokens = Regex.Matches(rawCol.Trim(), @"[^\s""]+|""[^""]*""")
+                                       .Cast<Match>()
+                                       .Select(m => m.Value)
+                                       .ToArray();
 
                 if (tokens.Length < 2)
                 {
@@ -290,49 +293,50 @@ class QueryProcessor
                         case "CHECK":
                             constraint.Constraints |= ConstraintType.Check;
                             index++;
-                            if (index < tokens.Length && tokens[index].StartsWith("("))
-                            {
-                                StringBuilder checkExpr = new StringBuilder(tokens[index]);
-                                index++;
-                                while (index < tokens.Length && !tokens[index].EndsWith(")"))
-                                {
-                                    checkExpr.Append(" ").Append(tokens[index]);
-                                    index++;
-                                }
+                            StringBuilder checkExpr = new StringBuilder();
 
-                                if (index < tokens.Length)
-                                {
-                                    checkExpr.Append(" ").Append(tokens[index]); // Append last part
-                                    constraint.CheckExpression = checkExpr.ToString().Trim('(', ')');
-                                }
-                                else
-                                {
-                                    Console.WriteLine("Syntax Error: Invalid CHECK expression.");
-                                    return;
-                                }
-                            }
-                            else
+                            while (index < tokens.Length)
                             {
-                                Console.WriteLine("Syntax Error: CHECK expression missing.");
+                                checkExpr.Append(tokens[index]).Append(" ");
+                                if (tokens[index].EndsWith(")"))
+                                    break;
+                                index++;
+                            }
+
+                            if (checkExpr.Length == 0 || !checkExpr.ToString().Contains("("))
+                            {
+                                Console.WriteLine("Syntax Error: Invalid CHECK expression.");
                                 return;
                             }
+
+                            constraint.CheckExpression = checkExpr.ToString().Trim().Trim('(', ')');
                             break;
 
                         case "FOREIGN_KEY":
                         case "FOREIGNKEY":
                             constraint.Constraints |= ConstraintType.ForeignKey;
                             index++;
-                            if (index < tokens.Length && tokens[index].Contains("(") && tokens[index].Contains(")"))
+
+                            if (index < tokens.Length)
                             {
-                                string refDef = tokens[index];
-                                int parenStart = refDef.IndexOf('(');
-                                int parenEnd = refDef.IndexOf(')');
-                                constraint.ReferenceTable = refDef.Substring(0, parenStart);
-                                constraint.ReferenceColumn = refDef.Substring(parenStart + 1, parenEnd - parenStart - 1);
+                                string fkDef = string.Join(" ", tokens.Skip(index));
+                                var match = Regex.Match(fkDef, @"^([A-Za-z_][\w]*)\s*\(\s*([A-Za-z_][\w]*)\s*\)");
+
+                                if (match.Success)
+                                {
+                                    constraint.ReferenceTable = match.Groups[1].Value;
+                                    constraint.ReferenceColumn = match.Groups[2].Value;
+                                    index = tokens.Length; // All consumed
+                                }
+                                else
+                                {
+                                    Console.WriteLine("Syntax Error: FOREIGN_KEY format should be <table(column)>.");
+                                    return;
+                                }
                             }
                             else
                             {
-                                Console.WriteLine("Syntax Error: FOREIGN_KEY format should be <table(column)>.");
+                                Console.WriteLine("Syntax Error: Missing FOREIGN_KEY reference.");
                                 return;
                             }
                             break;
@@ -354,11 +358,9 @@ class QueryProcessor
                 return;
             }
 
-            // Create the table
             database.CreateTable(tableName, columns);
             Console.WriteLine($"Table '{tableName}' created successfully in database '{database.Name}'.");
 
-            // ✅ Transaction Logging for CREATE TABLE
             if (currentTransactionId.HasValue)
             {
                 transactionManager.LogOperation(
@@ -372,8 +374,66 @@ class QueryProcessor
             }
         }
 
+        else if (objectType == "index")
+        {
+            if (parts.Length < 5)
+            {
+                Console.WriteLine("Syntax Error: Use CREATE INDEX <index_name> ON <table_name>(<column_name>)");
+                return;
+            }
+
+            string indexName = parts[2];
+            string onKeyword = parts[3].ToLower();
+
+            if (onKeyword != "on")
+            {
+                Console.WriteLine("Syntax Error: Missing 'ON' keyword in CREATE INDEX statement.");
+                return;
+            }
+
+            string tableAndColumnPart = string.Join(" ", parts.Skip(4));
+            int startParen = tableAndColumnPart.IndexOf('(');
+            int endParen = tableAndColumnPart.IndexOf(')');
+
+            if (startParen == -1 || endParen == -1 || endParen <= startParen)
+            {
+                Console.WriteLine("Syntax Error: Column name must be inside parentheses.");
+                return;
+            }
+
+            string tableName = tableAndColumnPart.Substring(0, startParen).Trim();
+            string columnName = tableAndColumnPart.Substring(startParen + 1, endParen - startParen - 1).Trim();
+
+            if (database == null)
+            {
+                Console.WriteLine("No database selected. Use USE <database_name> before creating indexes.");
+                return;
+            }
+
+            Table table = database.GetTable(tableName);
+
+            if (table == null)
+            {
+                Console.WriteLine($"Table '{tableName}' does not exist in database '{database.Name}'.");
+                return;
+            }
+
+            if (!table.HasColumn(columnName))
+            {
+                Console.WriteLine($"Column '{columnName}' does not exist in table '{tableName}'.");
+                return;
+            }
+
+            // ✅ Create the index (StorageManager will handle saving automatically)
+            table.CreateIndex(columnName);
+
+            Console.WriteLine($"Index '{indexName}' created successfully on '{tableName}({columnName})'.");
+
+            
+        }
 
     }
+
     public Database GetQPDatabase()
     {
         return database;
@@ -394,8 +454,16 @@ class QueryProcessor
             return;
         }
 
-        List<string> columns = parts[3].Trim('(', ')').Split(',').Select(c => c.Trim()).ToList();
-        List<string> values = parts[5].Trim('(', ')').Split(',').Select(v => v.Trim()).ToList();
+        // Properly parse columns and values
+        string columnsPart = parts[3];
+        string valuesPart = string.Join(" ", parts.Skip(5)); // In case values have spaces
+
+        List<string> columns = columnsPart.Trim('(', ')')
+                                           .Split(',')
+                                           .Select(c => c.Trim())
+                                           .ToList();
+
+        List<string> values = ParseValues(valuesPart.Trim('(', ')'));
 
         if (columns.Count != values.Count)
         {
@@ -408,12 +476,11 @@ class QueryProcessor
 
         if (currentTransactionId.HasValue)
         {
-            // Log the operation before performing it
             transactionManager.LogOperation(
                 currentTransactionId.Value,
                 "insert",
                 tableName,
-                null,                           // No "before" state for insert
+                null,
                 new List<Dictionary<string, string>> { row },
                 database
             );
@@ -422,6 +489,41 @@ class QueryProcessor
         database.Tables[tableName].InsertRow(row);
         Console.WriteLine("Row inserted successfully.");
     }
+
+    // Helper to parse values respecting quotes
+    private List<string> ParseValues(string input)
+    {
+        List<string> values = new List<string>();
+        bool insideQuotes = false;
+        string current = "";
+
+        foreach (char c in input)
+        {
+            if (c == '"')
+            {
+                insideQuotes = !insideQuotes;
+                continue;
+            }
+
+            if (c == ',' && !insideQuotes)
+            {
+                values.Add(current.Trim());
+                current = "";
+            }
+            else
+            {
+                current += c;
+            }
+        }
+
+        if (!string.IsNullOrEmpty(current))
+        {
+            values.Add(current.Trim());
+        }
+
+        return values;
+    }
+
 
     public void HandleSelectQuery(string query)
     {
@@ -519,7 +621,7 @@ class QueryProcessor
             // Apply WHERE clause
             if (!string.IsNullOrEmpty(whereClause))
             {
-                results = results.Where(row => EvaluateWhereClause(row, whereClause)).ToList();
+                results = results.Where(row => EvaluateWhereClauseWithQuotes(row, whereClause)).ToList();
             }
 
             // Apply GROUP BY
@@ -735,22 +837,12 @@ class QueryProcessor
 
         var table = database.Tables[tableName];
 
-        // Parse SET assignments
-        Dictionary<string, string> updatedValues = new();
-        foreach (var assignment in setClause.Split(','))
-        {
-            var pair = assignment.Split('=');
-            if (pair.Length != 2)
-            {
-                Console.WriteLine("Invalid SET clause format.");
-                return;
-            }
-            updatedValues[pair[0].Trim()] = pair[1].Trim();
-        }
+        // Parse SET assignments properly
+        Dictionary<string, string> updatedValues = ParseAssignments(setClause);
 
         // Filter rows matching the WHERE clause
         var matchingRows = table.Rows
-            .Where(row => EvaluateWhereClause(row, whereClause))
+            .Where(row => EvaluateWhereClauseWithQuotes(row, whereClause))
             .ToList();
 
         if (!matchingRows.Any())
@@ -758,12 +850,6 @@ class QueryProcessor
             Console.WriteLine("No matching rows found for update.");
             return;
         }
-
-        // Apply ORDER BY if specified
-        //if (!string.IsNullOrEmpty(orderByClause))
-        //{
-        //    matchingRows = ApplyOrderBy(matchingRows, orderByClause);
-        //}
 
         var pkColumn = table.Columns.FirstOrDefault(c => c.Constraint.Has(ConstraintType.PrimaryKey));
         if (pkColumn == null)
@@ -810,7 +896,128 @@ class QueryProcessor
 
         Console.WriteLine($"{matchingRows.Count} row(s) updated in '{tableName}'.");
     }
+    // Parses SET clause, handling quoted values properly
+    private Dictionary<string, string> ParseAssignments(string input)
+    {
+        Dictionary<string, string> assignments = new();
+        bool insideQuotes = false;
+        string current = "";
+        List<string> pairs = new();
 
+        foreach (char c in input)
+        {
+            if (c == '"')
+            {
+                insideQuotes = !insideQuotes;
+                current += c;
+            }
+            else if (c == ',' && !insideQuotes)
+            {
+                pairs.Add(current.Trim());
+                current = "";
+            }
+            else
+            {
+                current += c;
+            }
+        }
+
+        if (!string.IsNullOrEmpty(current))
+            pairs.Add(current.Trim());
+
+        foreach (var assignment in pairs)
+        {
+            var parts = assignment.Split('=');
+            if (parts.Length != 2)
+                throw new Exception("Invalid SET assignment format.");
+
+            string column = parts[0].Trim();
+            string value = parts[1].Trim().Trim('"'); // Remove surrounding quotes
+            assignments[column] = value;
+        }
+
+        return assignments;
+    }
+
+    // Evaluate WHERE clause supporting quoted strings
+    private bool EvaluateWhereClauseWithQuotes(Dictionary<string, string> row, string condition)
+    {
+        condition = condition.Replace(" not ", " NOT ", StringComparison.OrdinalIgnoreCase)
+                             .Replace(" and ", " AND ", StringComparison.OrdinalIgnoreCase)
+                             .Replace(" or ", " OR ", StringComparison.OrdinalIgnoreCase);
+
+        var expr = condition.Split(new[] { " OR " }, StringSplitOptions.None);
+        foreach (var orBlock in expr)
+        {
+            var ands = orBlock.Split(new[] { " AND " }, StringSplitOptions.None);
+            bool allTrue = true;
+
+            foreach (var clause in ands)
+            {
+                string trimmed = clause.Trim();
+
+                bool negate = false;
+                if (trimmed.StartsWith("NOT ", StringComparison.OrdinalIgnoreCase))
+                {
+                    negate = true;
+                    trimmed = trimmed.Substring(4).Trim();
+                }
+
+                string[] operators = new[] { ">=", "<=", "!=", "=", ">", "<" };
+                string op = operators.FirstOrDefault(o => trimmed.Contains(o));
+                if (op == null)
+                {
+                    Console.WriteLine($"Unsupported operator in WHERE clause: {trimmed}");
+                    return false;
+                }
+
+                var parts = trimmed.Split(new[] { op }, StringSplitOptions.None);
+                if (parts.Length != 2)
+                {
+                    Console.WriteLine($"Invalid condition: {trimmed}");
+                    return false;
+                }
+
+                string column = parts[0].Trim();
+                string value = parts[1].Trim();
+
+                // Remove surrounding quotes if present
+                if ((value.StartsWith("\"") && value.EndsWith("\"")) || (value.StartsWith("'") && value.EndsWith("'")))
+                {
+                    value = value.Substring(1, value.Length - 2);
+                }
+
+                if (!row.ContainsKey(column))
+                    return false;
+
+                string cell = row[column];
+
+                int comparison = string.Compare(cell, value, StringComparison.OrdinalIgnoreCase);
+                bool result = op switch
+                {
+                    "=" => cell == value,
+                    "!=" => cell != value,
+                    ">" => comparison > 0,
+                    "<" => comparison < 0,
+                    ">=" => comparison >= 0,
+                    "<=" => comparison <= 0,
+                    _ => false
+                };
+
+                if (negate) result = !result;
+
+                if (!result)
+                {
+                    allTrue = false;
+                    break;
+                }
+            }
+
+            if (allTrue) return true;
+        }
+
+        return false;
+    }
 
 
 
@@ -853,7 +1060,7 @@ class QueryProcessor
 
         // Evaluate and collect rows to delete
         var rowsToDelete = table.Rows
-            .Where(row => EvaluateWhereClause(row, condition))
+            .Where(row => EvaluateWhereClauseWithQuotes(row, condition)) // <-- UPDATED HERE
             .ToList();
 
         if (rowsToDelete.Count == 0)
@@ -898,6 +1105,7 @@ class QueryProcessor
 
         Console.WriteLine($"{rowsToDelete.Count} row(s) deleted successfully from '{tableName}'.");
     }
+
 
 
 

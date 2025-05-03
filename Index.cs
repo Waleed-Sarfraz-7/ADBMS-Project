@@ -1,10 +1,15 @@
-﻿using System.Text.Json.Serialization;
+﻿using System.Runtime.Serialization;
+using System.Text.Json.Serialization;
+[DataContract]
+[KnownType(typeof(SerializableBTree))]
 
 public class Index
 {
+    
     public string ColumnName { get; }
-    [JsonIgnore]
+    
     private BTree btree;
+    
     public SerializableBTree SerializableTree { get; set; }
 
 
@@ -15,15 +20,27 @@ public class Index
     }
     public Index() { }
 
-    public void AddToIndex(int key, object rowReference)
+    public void AddToIndex(string key, object rowReference)
     {
+        // Assuming you modify BTree to accept string keys too
         btree.Insert(key, rowReference);
     }
 
+    public void AddToIndex(int key, object rowReference)
+    {
+        // Assuming you modify BTree to accept string keys too
+        btree.Insert(key, rowReference);
+    }
     public object Lookup(int key)
     {
         return btree.Search(key);
     }
+
+    public object Lookup(string key)
+    {
+        return btree.Search(key);
+    }
+
     public void PrepareForSave()
     {
         SerializableTree = btree.ToSerializable();

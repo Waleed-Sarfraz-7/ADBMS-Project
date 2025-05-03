@@ -1,11 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Runtime.Serialization;
 
 namespace ConsoleApp1
 {
+    [Flags]
     public enum ConstraintType
     {
         None = 0,
@@ -16,17 +14,20 @@ namespace ConsoleApp1
         Check = 16
     }
 
+    [DataContract]
     public class ColumnConstraint
     {
+        [DataMember]
         public ConstraintType Constraints { get; set; } = ConstraintType.None;
+        [DataMember]
         public string DefaultValue { get; set; }
+        [DataMember]
         public string CheckExpression { get; set; }
-
+        [DataMember]
         public string ReferenceTable { get; set; }
+        [DataMember]
         public string ReferenceColumn { get; set; }
 
         public bool Has(ConstraintType type) => Constraints.HasFlag(type);
-
     }
-
 }

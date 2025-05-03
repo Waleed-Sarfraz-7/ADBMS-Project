@@ -6,7 +6,8 @@ using System.Threading.Tasks;
 
 namespace ConsoleApp1
 {
-     class DBMS
+    [Serializable]
+    class DBMS
     {
         public Dictionary<string, Database> Databases { get; set; } = new();
         public string CurrentDataBaseName { get; private set; } = null;
