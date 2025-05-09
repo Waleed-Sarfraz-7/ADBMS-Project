@@ -1,0 +1,15 @@
+F:\Semester 4\DB Project\C#\DbmsClient\bin\Debug\net8.0\DbmsClient.exe
+F:\Semester 4\DB Project\C#\DbmsClient\bin\Debug\net8.0\DbmsClient.deps.json
+F:\Semester 4\DB Project\C#\DbmsClient\bin\Debug\net8.0\DbmsClient.runtimeconfig.json
+F:\Semester 4\DB Project\C#\DbmsClient\bin\Debug\net8.0\DbmsClient.dll
+F:\Semester 4\DB Project\C#\DbmsClient\bin\Debug\net8.0\DbmsClient.pdb
+F:\Semester 4\DB Project\C#\DbmsClient\obj\Debug\net8.0\DbmsClient.GeneratedMSBuildEditorConfig.editorconfig
+F:\Semester 4\DB Project\C#\DbmsClient\obj\Debug\net8.0\DbmsClient.AssemblyInfoInputs.cache
+F:\Semester 4\DB Project\C#\DbmsClient\obj\Debug\net8.0\DbmsClient.AssemblyInfo.cs
+F:\Semester 4\DB Project\C#\DbmsClient\obj\Debug\net8.0\DbmsClient.csproj.CoreCompileInputs.cache
+F:\Semester 4\DB Project\C#\DbmsClient\obj\Debug\net8.0\DbmsClient.sourcelink.json
+F:\Semester 4\DB Project\C#\DbmsClient\obj\Debug\net8.0\DbmsClient.dll
+F:\Semester 4\DB Project\C#\DbmsClient\obj\Debug\net8.0\refint\DbmsClient.dll
+F:\Semester 4\DB Project\C#\DbmsClient\obj\Debug\net8.0\DbmsClient.pdb
+F:\Semester 4\DB Project\C#\DbmsClient\obj\Debug\net8.0\DbmsClient.genruntimeconfig.cache
+F:\Semester 4\DB Project\C#\DbmsClient\obj\Debug\net8.0\ref\DbmsClient.dll
