@@ -51,6 +51,9 @@ class QueryProcessor
             case "use":
                 HandleUseDatabase(parts);
                 break;
+            case "explain":
+                ExplainQuery(query);
+                break;
             default:
                 Console.WriteLine("Invalid query.");
                 break;
@@ -76,6 +79,7 @@ class QueryProcessor
             case "select":
                 HandleSelectQuery(query);
                 break;
+            
             default:
                 Console.WriteLine("Unsupported query outside transaction.");
                 break;
@@ -226,6 +230,82 @@ class QueryProcessor
         if (joinType == "RIGHT" || joinType == "FULL")
         {
             foreach (var rightRow in rightTable.Rows)
+            {
+                bool matchFound = result.Any(r =>
+                    r.ContainsKey($"{rightTableName}.{rightJoinColumn}") &&
+                    r[$"{rightTableName}.{rightJoinColumn}"] == rightRow[rightJoinColumn]);
+
+                if (!matchFound)
+                {
+                    var combined = new Dictionary<string, string>();
+                    foreach (var col in leftTable.Columns)
+                        combined[$"{leftTableName}.{col.Name}"] = "NULL";
+
+                    foreach (var kv in rightRow)
+                        combined[$"{rightTableName}.{kv.Key}"] = kv.Value;
+
+                    result.Add(combined);
+                }
+            }
+        }
+
+        return result;
+    }
+    public List<Dictionary<string, string>> ExecuteJoinQuery(
+    string leftTableName,
+    string rightTableName,
+    string leftJoinColumn,
+    string rightJoinColumn,
+    string joinType,
+    Guid transactionId,
+    Database db)
+    {
+        var leftTable = db.Tables[leftTableName];
+        var rightTable = db.Tables[rightTableName];
+
+        var leftRows = transactionManager.GetVisibleRows(transactionId, leftTableName, db);
+        var rightRows = transactionManager.GetVisibleRows(transactionId, rightTableName, db);
+
+        var result = new List<Dictionary<string, string>>();
+
+        foreach (var leftRow in leftRows)
+        {
+            bool matchFound = false;
+            foreach (var rightRow in rightRows)
+            {
+                if (leftRow.TryGetValue(leftJoinColumn, out string leftValue) &&
+                    rightRow.TryGetValue(rightJoinColumn, out string rightValue) &&
+                    leftValue == rightValue)
+                {
+                    var combined = new Dictionary<string, string>();
+
+                    foreach (var kv in leftRow)
+                        combined[$"{leftTableName}.{kv.Key}"] = kv.Value;
+
+                    foreach (var kv in rightRow)
+                        combined[$"{rightTableName}.{kv.Key}"] = kv.Value;
+
+                    result.Add(combined);
+                    matchFound = true;
+                }
+            }
+
+            if ((joinType == "LEFT" || joinType == "FULL") && !matchFound)
+            {
+                var combined = new Dictionary<string, string>();
+                foreach (var kv in leftRow)
+                    combined[$"{leftTableName}.{kv.Key}"] = kv.Value;
+
+                foreach (var col in rightTable.Columns)
+                    combined[$"{rightTableName}.{col.Name}"] = "NULL";
+
+                result.Add(combined);
+            }
+        }
+
+        if (joinType == "RIGHT" || joinType == "FULL")
+        {
+            foreach (var rightRow in rightRows)
             {
                 bool matchFound = result.Any(r =>
                     r.ContainsKey($"{rightTableName}.{rightJoinColumn}") &&
@@ -595,7 +675,7 @@ class QueryProcessor
             database
         );
 
-        database.Tables[tableName].InsertRow(row);
+        //database.Tables[tableName].InsertRow(row);
         Console.WriteLine("Row inserted successfully.");
     }
 
@@ -850,6 +930,102 @@ class QueryProcessor
             }
         }
     }
+    public void ExplainQuery(string query)
+    {
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+        query = query.Trim();
+        if (!query.StartsWith("EXPLAIN", StringComparison.OrdinalIgnoreCase))
+        {
+            Console.WriteLine("Syntax Error: Query must start with 'EXPLAIN'.");
+            return;
+        }
+
+        // Strip EXPLAIN keyword
+        string innerQuery = query.Substring(7).Trim();
+
+        // Only support basic SELECT with WHERE = clause for now
+        var parts = innerQuery.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length < 4 || !parts[0].Equals("SELECT", StringComparison.OrdinalIgnoreCase))
+        {
+            Console.WriteLine("EXPLAIN only supports basic SELECT queries.");
+            return;
+        }
+
+        int fromIndex = Array.IndexOf(parts, "FROM");
+        if (fromIndex == -1 || fromIndex + 1 >= parts.Length)
+        {
+            Console.WriteLine("Syntax Error: 'FROM' clause is missing.");
+            return;
+        }
+
+        string tableName = parts[fromIndex + 1];
+        if (!database.Tables.TryGetValue(tableName, out var table))
+        {
+            Console.WriteLine($"Table '{tableName}' does not exist.");
+            return;
+        }
+
+        string whereClause = null;
+        int whereIndex = Array.FindIndex(parts, p => p.Equals("WHERE", StringComparison.OrdinalIgnoreCase));
+        if (whereIndex != -1)
+        {
+            whereClause = string.Join(" ", parts.Skip(whereIndex + 1));
+        }
+
+        stopwatch.Stop();
+        Console.WriteLine("📊 EXPLAIN PLAN:");
+        Console.WriteLine($"➡ Table: {tableName}");
+
+        if (!string.IsNullOrEmpty(whereClause))
+        {
+            // Normalize WHERE clause
+            string normalizedWhere = Regex.Replace(whereClause, @"([^\s])=([^\s])", "$1 = $2");
+            var whereParts = normalizedWhere.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+            if (whereParts.Length == 3 && whereParts[1] == "=")
+            {
+                string column = whereParts[0];
+                string value = whereParts[2].Trim('\'');
+
+                if (table.Indexes.TryGetValue(column, out var index))
+                {
+                    string normalizedValue = value.Trim().ToLowerInvariant();
+                    var timer = System.Diagnostics.Stopwatch.StartNew();
+                    var result = index.LookupRows(normalizedValue);
+                    timer.Stop();
+
+                    Console.WriteLine($"✅ Access Type: INDEXED LOOKUP");
+                    Console.WriteLine($"🔎 Index Used: {column}");
+                    Console.WriteLine($"🔑 Search Key: '{normalizedValue}'");
+                    Console.WriteLine($"🕒 Lookup Time: {timer.Elapsed.TotalMilliseconds:F3} ms");
+                    Console.WriteLine($"📦 Estimated Rows: {result?.Count ?? 0}");
+                }
+                else
+                {
+                    var timer = System.Diagnostics.Stopwatch.StartNew();
+                    var result = table.Rows.Where(row => EvaluateWhereClause(row, whereClause)).ToList();
+                    timer.Stop();
+
+                    Console.WriteLine($"⚠️ Access Type: FULL TABLE SCAN");
+                    Console.WriteLine($"🔎 Filter Column: {column}");
+                    Console.WriteLine($"🕒 Scan Time: {timer.Elapsed.TotalMilliseconds:F3} ms");
+                    Console.WriteLine($"📦 Estimated Rows: {result.Count}");
+                }
+            }
+            else
+            {
+                Console.WriteLine("⚠️ Complex WHERE clause; using full table scan.");
+            }
+        }
+        else
+        {
+            Console.WriteLine("⚠️ No WHERE clause; using full table scan.");
+        }
+
+        Console.WriteLine($"✅ Parse Time: {stopwatch.Elapsed.TotalMilliseconds:F3} ms");
+    }
+
     public void HandleSelectQuery(string query,Guid id)
     {
         query = query.Trim();
@@ -941,7 +1117,7 @@ class QueryProcessor
             string rightTable = rightJoinField[0];
             string rightColumn = rightJoinField[1];
 
-            var results = ExecuteJoinQuery(leftTable, rightTable, leftColumn, rightColumn, joinType, database);
+            var results = ExecuteJoinQuery(leftTable, rightTable, leftColumn, rightColumn, joinType,id, database);
 
             // Apply WHERE clause
             if (!string.IsNullOrEmpty(whereClause))
@@ -986,7 +1162,7 @@ class QueryProcessor
             return;
         }
 
-        var rows = table.Rows;
+        var rows = transactionManager.GetVisibleRows(id, tableName, database);
 
         // Apply WHERE clause
         if (!string.IsNullOrEmpty(whereClause))

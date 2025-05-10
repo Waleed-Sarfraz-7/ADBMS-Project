@@ -112,17 +112,19 @@ class BinaryStorageManager
         }
     }
 
+    private static readonly List<Type> KnownTypes = new()
+{
+    typeof(SerializableBTree),
+    typeof(SerializableBTreeNode),
+    typeof(List<Dictionary<string, string>>),
+    typeof(Dictionary<string, string>)
+};
+
     private static void SaveBinary<T>(T obj, string path)
     {
         using (FileStream stream = new FileStream(path, FileMode.Create))
         {
-            var knownTypes = new List<Type>
-        {
-            typeof(SerializableBTree),
-            typeof(SerializableBTreeNode)
-        };
-
-            var serializer = new DataContractSerializer(typeof(T), knownTypes);
+            var serializer = new DataContractSerializer(typeof(T), KnownTypes);
             serializer.WriteObject(stream, obj);
         }
     }
@@ -131,16 +133,11 @@ class BinaryStorageManager
     {
         using (FileStream stream = new FileStream(path, FileMode.Open))
         {
-            var knownTypes = new List<Type>
-        {
-            typeof(SerializableBTree),
-            typeof(SerializableBTreeNode)
-        };
-
-            var serializer = new DataContractSerializer(typeof(T), knownTypes);
+            var serializer = new DataContractSerializer(typeof(T), KnownTypes);
             return (T)serializer.ReadObject(stream);
         }
     }
+
 
 
     private static Table CleanTable(Table table)

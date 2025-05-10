@@ -111,14 +111,16 @@ namespace ConsoleApp1
                     {
                         if (operation is "update" or "delete")
                             concurrencyControl.AcquireWriteLock(tableName, index, transactionId);
+
                         alreadyLocked.Add(index);
                     }
 
-                    if (operation == "update" && concurrencyControl.IsRowDeleted(tableName, index, transactionId))
-                        Console.WriteLine("This row is already marked for deletion");
-                    beforeWithIndex.Add((index, row));
+                    // 🔁 Refresh row after acquiring the lock
+                    var lockedRow = new Dictionary<string, string>(table.Rows[index]);
+                    beforeWithIndex.Add((index, lockedRow));
                 }
             }
+
 
             if (after != null)
             {
@@ -212,17 +214,20 @@ namespace ConsoleApp1
                 if (op.Operation == "delete")
                 {
                     foreach (var (_, row) in op.Before)
+                    {
+                        table.UpdateIndexesForDelete(row); // 🧠 Remove from index
                         table.Rows.RemoveAll(r => r[pkCol.Name] == row[pkCol.Name]);
+                    }
                 }
                 else if (op.Operation == "update")
                 {
-                    foreach (var (index, updatedRow) in op.After)
+                    for (int i = 0; i < op.Before.Count; i++)
                     {
-                        if (index >= 0 && index < table.Rows.Count)
-                        {
-                            foreach (var kv in updatedRow)
-                                table.Rows[index][kv.Key] = kv.Value;
-                        }
+                        var (index, oldRow) = op.Before[i];
+                        var (_, newRow) = op.After[i];
+                        table.UpdateIndexesForUpdate(oldRow, newRow); // 🔁 Update index
+                        foreach (var kv in newRow)
+                            table.Rows[index][kv.Key] = kv.Value;
                     }
                 }
                 else if (op.Operation == "insert")
@@ -230,7 +235,10 @@ namespace ConsoleApp1
                     foreach (var (_, row) in op.After)
                     {
                         if (!table.Rows.Any(r => r[pkCol.Name] == row[pkCol.Name]))
+                        {
                             table.Rows.Add(new Dictionary<string, string>(row));
+                            table.UpdateIndexesForInsert(row); // ➕ Add to index
+                        }
                     }
                 }
             }
@@ -238,6 +246,7 @@ namespace ConsoleApp1
             concurrencyControl.ReleaseLocks(transactionId);
             Console.WriteLine($"Transaction {transactionId} committed successfully.");
         }
+
 
         public void RollbackTransaction(Guid transactionId, Database db)
         {
@@ -267,27 +276,28 @@ namespace ConsoleApp1
                 if (op.Operation == "insert")
                 {
                     foreach (var (_, row) in op.After)
+                    {
+                        table.UpdateIndexesForDelete(row); // ⬅️ Remove inserted row from index
                         table.Rows.RemoveAll(r => AreRowsEqual(r, row));
+                    }
                 }
                 else if (op.Operation == "delete")
                 {
                     foreach (var (idx, row) in op.Before)
+                    {
                         table.Rows.Insert(idx, row);
+                        table.UpdateIndexesForInsert(row); // ⬅️ Restore row to index
+                    }
                 }
                 else if (op.Operation == "update")
                 {
-                    foreach (var (idx, row) in op.Before)
+                    for (int i = 0; i < op.Before.Count; i++)
                     {
-                        if (idx >= 0 && idx < table.Rows.Count)
-                        {
-                            var currentRow = table.Rows[idx];
-                            bool safe = op.After.Any(after => after.Item1 == idx && AreRowsEqual(currentRow, after.Item2));
-                            if (safe)
-                            {
-                                foreach (var key in row.Keys)
-                                    currentRow[key] = row[key];
-                            }
-                        }
+                        var (idx, oldRow) = op.Before[i];
+                        var (_, newRow) = op.After[i];
+                        table.UpdateIndexesForUpdate(newRow, oldRow); // ⬅️ Reverse the update
+                        foreach (var key in oldRow.Keys)
+                            table.Rows[idx][key] = oldRow[key];
                     }
                 }
             }
@@ -295,12 +305,16 @@ namespace ConsoleApp1
             foreach (var (tableName, row) in transaction.InsertedRows)
             {
                 if (db.Tables.TryGetValue(tableName, out var table))
+                {
+                    table.UpdateIndexesForDelete(row); // Extra safety
                     table.Rows.RemoveAll(r => AreRowsEqual(r, row));
+                }
             }
 
             concurrencyControl.ReleaseLocks(transactionId);
             Console.WriteLine($"Transaction {transactionId} rolled back successfully.");
         }
+
 
         private bool AreRowsEqual(Dictionary<string, string> r1, Dictionary<string, string> r2)
         {

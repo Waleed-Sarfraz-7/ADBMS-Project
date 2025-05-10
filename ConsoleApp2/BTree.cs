@@ -17,7 +17,7 @@ public class SerializableBTreeNode
     public object[] Keys { get; set; }
 
     [DataMember]
-    public int[] ValueReferences { get; set; } // Optional for external linking
+    public object[] Values { get; set; }  // ✅ Add this line
 
     [DataMember]
     public List<SerializableBTreeNode> Children { get; set; } = new();
@@ -25,6 +25,7 @@ public class SerializableBTreeNode
     [DataMember]
     public bool IsLeaf { get; set; }
 }
+
 
 public class BTree
 {
@@ -50,9 +51,9 @@ public class BTree
         root.InsertNonFull(key, value);
     }
 
-    public void Remove(IComparable key, object value)
+    public void Remove(IComparable key)
     {
-        root?.Remove(key, value);
+        root?.Remove(key);
     }
 
     public object Search(IComparable key)
@@ -81,8 +82,8 @@ public class BTree
         var sNode = new SerializableBTreeNode
         {
             Keys = node.Keys.Take(node.KeyCount).ToArray(),
-            IsLeaf = node.IsLeaf,
-            ValueReferences = Enumerable.Range(0, node.KeyCount).ToArray()
+            Values = node.Values.Take(node.KeyCount).ToArray(),  // ✅ Add this line
+            IsLeaf = node.IsLeaf
         };
 
         if (!node.IsLeaf)
@@ -93,6 +94,7 @@ public class BTree
 
         return sNode;
     }
+
     public void PrintKeys()
     {
         root.PrintKeys();
@@ -102,14 +104,16 @@ public class BTree
         var node = new BTreeNode(degree, sNode.IsLeaf)
         {
             KeyCount = sNode.Keys.Length,
-            Keys = new IComparable[2 * degree - 1]
+            Keys = new IComparable[2 * degree - 1],
+            Values = new object[2 * degree - 1],
+            Children = new BTreeNode[2 * degree]
         };
 
         for (int i = 0; i < sNode.Keys.Length; i++)
+        {
             node.Keys[i] = (IComparable)sNode.Keys[i];
-
-        node.Values = new object[2 * degree - 1];
-        node.Children = new BTreeNode[2 * degree];
+            node.Values[i] = sNode.Values[i];  // ✅ Add this line
+        }
 
         if (!sNode.IsLeaf)
         {
@@ -119,4 +123,5 @@ public class BTree
 
         return node;
     }
+
 }

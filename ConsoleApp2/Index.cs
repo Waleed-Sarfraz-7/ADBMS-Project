@@ -54,13 +54,19 @@ public class Index
         var existing = btree.Search(key) as List<Dictionary<string, string>>;
         if (existing != null)
         {
-            existing.RemoveAll(r => ReferenceEquals(r, rowReference));
+            Console.WriteLine($"Before removal: {existing.Count} items");
+            existing.RemoveAll(r => AreDictionariesEqual(r, (Dictionary<string, string>)rowReference));
+            Console.WriteLine($"After removal: {existing.Count} items");
+
             if (existing.Count == 0)
             {
-                btree.Remove(key, existing);
+                Console.WriteLine("List is now empty. Proceeding to remove key.");
+                btree.Remove(key);
             }
         }
     }
+
+
 
     public object Lookup(IComparable key)
     {
@@ -87,6 +93,19 @@ public class Index
         }
 
         return result as List<Dictionary<string, string>> ?? new List<Dictionary<string, string>>();
+    }
+    private bool AreDictionariesEqual(Dictionary<string, string> dict1, Dictionary<string, string> dict2)
+    {
+        if (dict1.Count != dict2.Count)
+            return false;
+
+        foreach (var kvp in dict1)
+        {
+            if (!dict2.TryGetValue(kvp.Key, out var value) || value != kvp.Value)
+                return false;
+        }
+
+        return true;
     }
 
     public void PrepareForSave()

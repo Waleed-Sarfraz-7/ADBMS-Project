@@ -39,6 +39,60 @@ namespace ConsoleApp1
         }
 
         public Table() { }
+        public void UpdateIndexesForUpdate(Dictionary<string, string> oldRow, Dictionary<string, string> newRow)
+        {
+            foreach (var kvp in Indexes)
+            {
+                var column = kvp.Key;
+                var index = kvp.Value;
+
+                oldRow.TryGetValue(column, out var oldVal);
+                newRow.TryGetValue(column, out var newVal);
+
+                bool valueChanged = oldVal != newVal;
+
+                if (valueChanged)
+                {
+                    if (oldVal != null)
+                        index.RemoveFromIndex(oldVal, oldRow);
+
+                    if (newVal != null)
+                        index.AddToIndex(newVal, newRow);
+                }
+                else if (newVal != null)
+                {
+                    // Refresh row reference even if key didn't change
+                    index.RemoveFromIndex(newVal, oldRow);
+                    index.AddToIndex(newVal, newRow);
+                }
+            }
+        }
+        public void UpdateIndexesForDelete(Dictionary<string, string> row)
+        {
+            foreach (var kvp in Indexes)
+            {
+                var column = kvp.Key;
+                var index = kvp.Value;
+
+                if (row.TryGetValue(column, out var value))
+                {
+                    index.RemoveFromIndex(value, row);
+                }
+            }
+        }
+        public void UpdateIndexesForInsert(Dictionary<string, string> row)
+        {
+            foreach (var kvp in Indexes)
+            {
+                var column = kvp.Key;
+                var index = kvp.Value;
+
+                if (row.TryGetValue(column, out var value))
+                {
+                    index.AddToIndex(value, row);
+                }
+            }
+        }
 
         // Create an index for a column using the Index class (which internally uses BTree)
         public void CreateIndex(string columnName)
@@ -251,7 +305,7 @@ namespace ConsoleApp1
 
                 if (Indexes.TryGetValue(col.Name, out var index))
                 {
-                    var oldValue = targetRow[col.Name].ToLower();
+                    var oldValue = targetRow[col.Name];
                     index.RemoveFromIndex(oldValue, targetRow);
                 }
 
@@ -287,7 +341,7 @@ namespace ConsoleApp1
             int rowIndex = Rows.FindIndex(r => r[primaryKeyColumn.Name] == primaryKeyValue);
 
             // 🟢 If NOT in a transaction, delete immediately and apply cascading deletes
-            if (deletingTransactionId == Guid.Empty)
+            if (deletingTransactionId == null || deletingTransactionId == Guid.Empty)
             {
                 // Cascading delete
                 foreach (var childTable in ParentDatabase.Tables.Values)
@@ -307,10 +361,21 @@ namespace ConsoleApp1
                                 string childPk = childTable.Columns
                                     .First(c => c.Constraint.Has(ConstraintType.PrimaryKey)).Name;
 
-                                childTable.DeleteRow(childRow[childPk], tm, Guid.Empty);  // No transaction
+                                childTable.DeleteRow(childRow[childPk], tm, null);  // Pass null again
                                 Console.WriteLine($"Cascading delete: Immediately deleted from '{childTable.Name}' where '{col.Name}' = {primaryKeyValue}");
                             }
                         }
+                    }
+                }
+
+                // Remove from indexes
+                foreach (var index in Indexes.Values)
+                {
+                    var indexColumn = index.ColumnName;
+                    if (rowToDelete.ContainsKey(indexColumn))
+                    {
+                        var key = (IComparable)rowToDelete[indexColumn];
+                        index.RemoveFromIndex(key, rowToDelete);
                     }
                 }
 
@@ -319,6 +384,7 @@ namespace ConsoleApp1
                 Console.WriteLine("Row deleted immediately (no transaction).");
                 return;
             }
+
 
             // 🔁 Perform stack-based delete (to avoid recursion)
             var deleteQueue = new Stack<(Table table, string pkValue)>();
@@ -371,9 +437,23 @@ namespace ConsoleApp1
                 tm.LogOperation(deletingTransactionId.Value, "delete", currentTable.Name, beforeData, null, currentTable.ParentDatabase);
                 tm.concurrencyControl.MarkRowAsDeleted(currentTable.Name, rowIdx, deletingTransactionId.Value);
 
+                
+                // Remove from indexes
+                foreach (var index in currentTable.Indexes.Values)
+                {
+                    var indexColumn = index.ColumnName;
+                    if (rowToDel.ContainsKey(indexColumn))
+                    {
+                        var key = (IComparable)rowToDel[indexColumn];
+                        index.RemoveFromIndex(key, rowToDel);
+                    }
+                }
+
+
                 Console.WriteLine($"Deferred delete logged for {currentTable.Name} where {currentPrimaryKey} = {currentPkVal}");
             }
         }
+
 
 
 

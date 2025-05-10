@@ -89,7 +89,7 @@
         y.KeyCount = degree - 1;
     }
 
-    public void Remove(IComparable key, object value)
+    public void Remove(IComparable key)
     {
         int i = 0;
         while (i < KeyCount && Keys[i].CompareTo(key) < 0)
@@ -99,8 +99,8 @@
         {
             if (IsLeaf)
             {
-                // If the list associated with this key is now empty, remove the key
-                if (value is List<Dictionary<string, string>> valList && valList.Count == 0)
+                var valList = Values[i] as List<Dictionary<string, string>>;
+                if (valList == null || valList.Count == 0)
                 {
                     for (int j = i; j < KeyCount - 1; j++)
                     {
@@ -117,26 +117,26 @@
         }
         else if (!IsLeaf)
         {
-            Children[i].Remove(key, value);
+            Children[i].Remove(key);
         }
     }
 
 
 
 
+
     public object Search(IComparable key)
     {
-        for (int i = 0; i < KeyCount; i++)
-        {
-            Console.WriteLine($"🔍 Comparing '{key}' to '{Keys[i]}'");
-            if (key.CompareTo(Keys[i]) == 0)
-            {
-                Console.WriteLine($"✅ Match found for key '{key}'");
-                return Values[i];
-            }
-        }
+        int i = 0;
+        while (i < KeyCount && Keys[i].CompareTo(key) < 0)
+            i++;
 
-        return IsLeaf ? null : Children[KeyCount - 1].Search(key);
+        if (i < KeyCount && Keys[i].CompareTo(key) == 0)
+            return Values[i]; // ← make sure this is the actual reference
+        else if (IsLeaf)
+            return null;
+        else
+            return Children[i].Search(key);
     }
 
     public void PrintKeys()
