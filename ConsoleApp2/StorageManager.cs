@@ -48,7 +48,7 @@ class BinaryStorageManager
             }
         }
 
-        
+
     }
 
     public static DBMS LoadDBMS()
@@ -80,12 +80,12 @@ class BinaryStorageManager
                         LoadIndexesForTable(table, tableFolder);
                         db.Tables[table.Name] = table;
                         Console.WriteLine("table loaded Successfully", table.Name);
-                        
+
                     }
                 }
 
                 dbms.Databases[dbName] = db;
-               
+
             }
         }
 
@@ -106,7 +106,7 @@ class BinaryStorageManager
                 index.RestoreAfterLoad(); // <-- Properly restores BTree from SerializableTree
                 table.Indexes[indexName] = index;
 
-                index.PrintKeys();
+                //index.PrintKeys();
                 Console.WriteLine($"Loaded index '{indexName}' for table '{table.Name}'.");
             }
         }

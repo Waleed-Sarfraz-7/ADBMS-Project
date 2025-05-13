@@ -124,33 +124,7 @@ namespace ConsoleApp1
             return Columns.Any(column => column.Name == columnName);
         }
 
-        public void RestoreIndexes()
-        {
-            // Restore all indexes from their serialized form
-            foreach (var index in Indexes.Values)
-            {
-                index.RestoreAfterLoad();
-            }
-        }
-
-        // Lookup a row using the index (BTree) for a specific column and key
-        public object LookupUsingIndex(string columnName, int key)
-        {
-            if (Indexes.TryGetValue(columnName, out var index))
-            {
-                return index.Lookup(key);
-            }
-            return null;
-        }
-
-        public object LookupUsingIndex(string columnName, string key)
-        {
-            if (Indexes.TryGetValue(columnName, out var index))
-            {
-                return index.Lookup(key);
-            }
-            return null;
-        }
+       
 
         public void SetParentDatabase(Database db)
         {
@@ -302,6 +276,30 @@ namespace ConsoleApp1
                     if (!exists)
                         throw new Exception($"Foreign key constraint failed for value '{value}' in column '{col.Name}'");
                 }
+                // Check if primary key is being updated
+                if (updatedValues.ContainsKey(primaryKeyColumn.Name))
+                {
+                    string newPrimaryKeyValue = updatedValues[primaryKeyColumn.Name];
+
+                    // Find tables that reference this table as a foreign key
+                    foreach (var otherTable in ParentDatabase.Tables.Values)
+                    {
+                        foreach (var column in otherTable.Columns)
+                        {
+                            if (column.Constraint.Has(ConstraintType.ForeignKey) &&
+                                column.Constraint.ReferenceTable == this.Name &&
+                                column.Constraint.ReferenceColumn == primaryKeyColumn.Name)
+                            {
+                                bool isReferenced = otherTable.Rows.Any(r => r[col.Name] == primaryKeyValue);
+                                if (isReferenced)
+                                {
+                                    throw new Exception($"Primary key '{primaryKeyColumn.Name}' with value '{primaryKeyValue}' is referenced in table '{otherTable.Name}'. Update not allowed.");
+                                }
+                            }
+                        }
+                    }
+                }
+
 
                 if (Indexes.TryGetValue(col.Name, out var index))
                 {

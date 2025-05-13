@@ -1,4 +1,5 @@
-﻿using System.Net;
+﻿using System.Diagnostics;
+using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using ConsoleApp1;
@@ -38,39 +39,92 @@ class Server
 
         try
         {
+            // ✅ Send available databases to client upon connection
+            writer.WriteLine("📂 Available databases:");
+            foreach (var dbName in dbms.Databases.Keys)
+            {
+                writer.WriteLine($"- {dbName}");
+            }
+            writer.WriteLine("👉 Use `USE database_name;` to select one.");
+            writer.WriteLine("__END__");
+
             while (true)
             {
-                string query = reader.ReadLine();
-                if (string.IsNullOrEmpty(query) || query.ToLower() == "exit")
-                    break;
+                try
+                {
+                    string query = reader.ReadLine();
+                    if (string.IsNullOrEmpty(query) || query.ToLower() == "exit")
+                        break;
 
-                // Set previously selected DB
-                if (!string.IsNullOrEmpty(selectedDatabase) && dbms.Databases.ContainsKey(selectedDatabase))
-                    qp.SetDatabase(selectedDatabase);
+                    // Check if a database is selected
+                    if (string.IsNullOrEmpty(selectedDatabase))
+                    {
+                        // Try detecting USE command
+                        if (query.TrimStart().StartsWith("USE", StringComparison.OrdinalIgnoreCase))
+                        {
+                            // Let it process normally to set selected DB
+                        }
+                        else
+                        {
+                            writer.WriteLine("❌ You must select a database first using `USE database_name;`.");
+                            writer.WriteLine("__END__");
+                            continue;
+                        }
+                    }
 
-                var output = new StringBuilder();
-                var consoleWriter = new StringWriter(output);
-                Console.SetOut(consoleWriter);
-                qp.ExecuteQuery(query);
-                consoleWriter.Flush(); // ✅ Flush captured output
-                Console.SetOut(new StreamWriter(Console.OpenStandardOutput()) { AutoFlush = true });
+                    // Set DB in QP context
+                    if (!string.IsNullOrEmpty(selectedDatabase) && dbms.Databases.ContainsKey(selectedDatabase))
+                        qp.SetDatabase(selectedDatabase);
 
+                    var output = new StringBuilder();
+                    var consoleWriter = new StringWriter(output);
+                    Console.SetOut(consoleWriter);
 
-                // Remember selected DB
-                selectedDatabase = qp.GetQPDatabase()?.Name;
+                    qp.ExecuteQuery(query);
 
-                writer.WriteLine(output.ToString().Replace("\n", "\\n")); // Avoid line-breaking issues
-                writer.WriteLine("__END__");
+                    consoleWriter.Flush();
+                    Console.SetOut(new StreamWriter(Console.OpenStandardOutput()) { AutoFlush = true });
+
+                    selectedDatabase = qp.GetQPDatabase()?.Name;
+
+                    writer.WriteLine(output.ToString().Replace("\n", "\\n"));
+                    writer.WriteLine("__END__");
+
+                    if (!tm.AnyActiveTransaction())
+                    {
+                        BinaryStorageManager.SaveDBMS(dbms);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    writer.WriteLine($"❌ Error: {ex.Message}");
+                    writer.WriteLine("__END__");
+                    Console.WriteLine($"Error processing query: {ex.Message}");
+                    Console.WriteLine($"StackTrace: {ex.StackTrace}");
+                }
             }
         }
         catch (Exception ex)
         {
-            writer.WriteLine($"❌ Error: {ex.Message}");
+            Console.WriteLine($"Fatal error: {ex.Message}");
+            writer.WriteLine($"❌ Fatal error: {ex.Message}");
+            writer.WriteLine("__END__");
         }
         finally
         {
+            try
+            {
+                BinaryStorageManager.SaveDBMS(dbms);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error saving DBMS state: {ex.Message}");
+            }
+
             client.Close();
-            BinaryStorageManager.SaveDBMS(dbms);
+            Console.WriteLine("Client connection closed.");
         }
     }
+
+
 }

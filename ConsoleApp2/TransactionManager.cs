@@ -48,6 +48,11 @@ namespace ConsoleApp1
                 return new Dictionary<Guid, Transaction>(transactions);
             }
         }
+        public bool AnyActiveTransaction()
+        {
+            return transactions.Values.Any(t => t.IsActive);
+        }
+
 
         public Guid BeginTransaction()
         {
@@ -60,10 +65,10 @@ namespace ConsoleApp1
             return transaction.Id;
         }
 
-       
+
 
         public void LogOperation(Guid transactionId, string operation, string tableName,
-          List<Dictionary<string, string>> before, List<Dictionary<string, string>> after, Database db)
+    List<Dictionary<string, string>> before, List<Dictionary<string, string>> after, Database db)
         {
             Transaction transaction;
 
@@ -98,6 +103,7 @@ namespace ConsoleApp1
             var pkCol = table.Columns.First(c => c.Constraint.Has(ConstraintType.PrimaryKey));
             var alreadyLocked = new HashSet<int>();
 
+            // Handle the 'before' operation
             if (before != null)
             {
                 foreach (var row in before)
@@ -109,8 +115,16 @@ namespace ConsoleApp1
 
                     if (!alreadyLocked.Contains(index))
                     {
-                        if (operation is "update" or "delete")
+                        // If the row is being updated or deleted, acquire a write lock
+                        if (operation == "update" || operation == "delete")
+                        {
                             concurrencyControl.AcquireWriteLock(tableName, index, transactionId);
+                        }
+                        else
+                        {
+                            // If no write lock, acquire an upgradeable read lock
+                            concurrencyControl.AcquireUpgradeableReadLock(tableName, index, transactionId);
+                        }
 
                         alreadyLocked.Add(index);
                     }
@@ -121,7 +135,7 @@ namespace ConsoleApp1
                 }
             }
 
-
+            // Handle the 'after' operation
             if (after != null)
             {
                 foreach (var row in after)
@@ -131,7 +145,17 @@ namespace ConsoleApp1
 
                     if (!alreadyLocked.Contains(index))
                     {
-                        concurrencyControl.AcquireWriteLock(tableName, index, transactionId);
+                        // If the row is being updated or inserted, acquire a write lock
+                        if (operation == "insert" || operation == "update")
+                        {
+                            concurrencyControl.AcquireWriteLock(tableName, index, transactionId);
+                        }
+                        else
+                        {
+                            // If no write lock, acquire an upgradeable read lock
+                            concurrencyControl.AcquireUpgradeableReadLock(tableName, index, transactionId);
+                        }
+
                         alreadyLocked.Add(index);
                     }
 
@@ -142,6 +166,7 @@ namespace ConsoleApp1
                 }
             }
 
+            // Log the operation with before and after states
             transaction.Operations.Add(new OperationLog
             {
                 Operation = operation,
@@ -150,6 +175,7 @@ namespace ConsoleApp1
                 After = afterWithIndex
             });
         }
+
 
         public List<Dictionary<string, string>> GetVisibleRows(Guid transactionId, string tableName, Database db)
         {

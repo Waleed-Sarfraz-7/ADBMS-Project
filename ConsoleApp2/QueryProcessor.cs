@@ -864,14 +864,15 @@ class QueryProcessor
             if (whereParts.Length == 3 && whereParts[1] == "=")
             {
                 string column = whereParts[0];
-                string value = whereParts[2].Trim('\'');
+                string value = whereParts[2].Trim('\'', '"');
 
-                
-                    if (table.Indexes.TryGetValue(column, out var index))
+
+
+                if (table.Indexes.TryGetValue(column, out var index))
                     {
-                        string normalizedValue = value.Trim().ToLowerInvariant(); // 🔥 Add normalization
+                         
                         Console.WriteLine($"✅ Using index on column '{column}' for WHERE clause.");
-                        rows = index.LookupRows(normalizedValue);
+                        rows = index.LookupRows(value);
                     }
 
                 else
@@ -979,27 +980,27 @@ class QueryProcessor
 
         if (!string.IsNullOrEmpty(whereClause))
         {
-            // Normalize WHERE clause
             string normalizedWhere = Regex.Replace(whereClause, @"([^\s])=([^\s])", "$1 = $2");
             var whereParts = normalizedWhere.Split(' ', StringSplitOptions.RemoveEmptyEntries);
 
             if (whereParts.Length == 3 && whereParts[1] == "=")
             {
                 string column = whereParts[0];
-                string value = whereParts[2].Trim('\'');
+                string value = whereParts[2].Trim('\'', '"');
 
                 if (table.Indexes.TryGetValue(column, out var index))
                 {
-                    string normalizedValue = value.Trim().ToLowerInvariant();
                     var timer = System.Diagnostics.Stopwatch.StartNew();
-                    var result = index.LookupRows(normalizedValue);
+                    var result = index.LookupRows(value);
                     timer.Stop();
 
                     Console.WriteLine($"✅ Access Type: INDEXED LOOKUP");
                     Console.WriteLine($"🔎 Index Used: {column}");
-                    Console.WriteLine($"🔑 Search Key: '{normalizedValue}'");
+                    Console.WriteLine($"🔑 Search Key: '{value}'");
                     Console.WriteLine($"🕒 Lookup Time: {timer.Elapsed.TotalMilliseconds:F3} ms");
                     Console.WriteLine($"📦 Estimated Rows: {result?.Count ?? 0}");
+                    Console.WriteLine($"✅ Parse Time: {stopwatch.Elapsed.TotalMilliseconds:F3} ms");
+                    return;
                 }
                 else
                 {
@@ -1011,19 +1012,35 @@ class QueryProcessor
                     Console.WriteLine($"🔎 Filter Column: {column}");
                     Console.WriteLine($"🕒 Scan Time: {timer.Elapsed.TotalMilliseconds:F3} ms");
                     Console.WriteLine($"📦 Estimated Rows: {result.Count}");
+                    Console.WriteLine($"✅ Parse Time: {stopwatch.Elapsed.TotalMilliseconds:F3} ms");
+                    return;
                 }
             }
             else
             {
+                var timer = System.Diagnostics.Stopwatch.StartNew();
+                var result = table.Rows.Where(row => EvaluateWhereClause(row, whereClause)).ToList();
+                timer.Stop();
+
                 Console.WriteLine("⚠️ Complex WHERE clause; using full table scan.");
+                Console.WriteLine($"🕒 Scan Time: {timer.Elapsed.TotalMilliseconds:F3} ms");
+                Console.WriteLine($"📦 Estimated Rows: {result.Count}");
+                Console.WriteLine($"✅ Parse Time: {stopwatch.Elapsed.TotalMilliseconds:F3} ms");
+                return;
             }
         }
         else
         {
-            Console.WriteLine("⚠️ No WHERE clause; using full table scan.");
-        }
+            var timer = System.Diagnostics.Stopwatch.StartNew();
+            var result = table.Rows.ToList(); // Full scan
+            timer.Stop();
 
-        Console.WriteLine($"✅ Parse Time: {stopwatch.Elapsed.TotalMilliseconds:F3} ms");
+            Console.WriteLine("⚠️ No WHERE clause; using full table scan.");
+            Console.WriteLine($"🕒 Scan Time: {timer.Elapsed.TotalMilliseconds:F3} ms");
+            Console.WriteLine($"📦 Estimated Rows: {result.Count}");
+            Console.WriteLine($"✅ Parse Time: {stopwatch.Elapsed.TotalMilliseconds:F3} ms");
+            return;
+        }
     }
 
     public void HandleSelectQuery(string query,Guid id)
@@ -1279,6 +1296,8 @@ class QueryProcessor
                 var parts = trimmed.Split(new[] { op }, StringSplitOptions.None);
                 string column = parts[0].Trim();
                 string value = parts[1].Trim();
+                value = value.Trim('\'', '"');
+
 
                 if (!row.ContainsKey(column))
                     return false;
