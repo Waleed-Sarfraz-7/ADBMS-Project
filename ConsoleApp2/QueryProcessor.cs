@@ -1741,21 +1741,21 @@ class QueryProcessor
             string pkValue = row[pkColumn.Name];
 
             // Transaction logging (before snapshot)
-            
-                //var beforeSnapshot = new Dictionary<string, string>(row);
-                //transactionManager.LogOperation(
-                //    id,
-                //    "delete",
-                //    tableName,
-                //    new List<Dictionary<string, string>> { beforeSnapshot },
-                //    null,
-                //    database
-                //);
-            
+
+            //var beforeSnapshot = new Dictionary<string, string>(row);
+            //transactionManager.LogOperation(
+            //    id,
+            //    "delete",
+            //    tableName,
+            //    new List<Dictionary<string, string>> { beforeSnapshot },
+            //    null,
+            //    database
+            //);
+
 
             try
             {
-                table.DeleteRow(pkValue,  transactionManager,id);
+                table.DeleteRow(pkValue, transactionManager, id);
             }
             catch (Exception ex)
             {

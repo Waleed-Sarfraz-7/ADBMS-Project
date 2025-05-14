@@ -107,24 +107,31 @@
             {
                 var (lck, writeOwner, readOwners) = locks[key];
 
-                if (writeOwner == txId && lck.IsWriteLockHeld)
+                if (writeOwner == txId && lck.IsWriteLockHeld && lck.RecursiveWriteCount > 0)
                 {
                     lck.ExitWriteLock();
                     writeOwner = null;
                 }
 
-                if (readOwners.Contains(txId) && lck.IsReadLockHeld)
+                if (readOwners.Contains(txId) && lck.IsReadLockHeld && lck.RecursiveReadCount > 0)
                 {
                     lck.ExitReadLock();
                     readOwners.Remove(txId);
                 }
 
+
                 locks[key] = (lck, writeOwner, readOwners);
             }
 
-            // ✅ Notify all waiting threads
+            // ✅ Clean up deleted markers held by this transaction
+            foreach (var marker in deletedMarkers.Where(kv => kv.Value == txId).Select(kv => kv.Key).ToList())
+            {
+                deletedMarkers.Remove(marker);
+            }
+
             Monitor.PulseAll(lockObj);
         }
     }
+
 
 }

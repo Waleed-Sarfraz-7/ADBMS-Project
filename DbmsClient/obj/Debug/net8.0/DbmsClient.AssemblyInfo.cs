@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("DbmsClient")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+2437f38d8bca6e409bcc819b3da094f01b4cf822")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+702beae437617830221e0dcd0144d0b497a1442d")]
 [assembly: System.Reflection.AssemblyProductAttribute("DbmsClient")]
 [assembly: System.Reflection.AssemblyTitleAttribute("DbmsClient")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

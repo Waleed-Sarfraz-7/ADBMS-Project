@@ -78,6 +78,11 @@ class BinaryStorageManager
                         }
 
                         LoadIndexesForTable(table, tableFolder);
+                        table.Rows = table.Rows
+    .Select(row => DeserializeRow(row, table.Columns)
+                    .ToDictionary(kv => kv.Key, kv => kv.Value?.ToString() ?? ""))
+    .ToList();
+
                         db.Tables[table.Name] = table;
                         Console.WriteLine("table loaded Successfully", table.Name);
 
@@ -144,13 +149,21 @@ class BinaryStorageManager
     {
         var newTable = new Table(table.Name, new List<Column>(), table.ParentDatabase)
         {
-            Rows = table.Rows,
+            Rows = table.Rows.Select(row =>
+            {
+                var converted = new Dictionary<string, string>();
+                foreach (var kv in row)
+                {
+                    converted[kv.Key] = kv.Value?.ToString();
+                }
+                return converted;
+            }).ToList(),
+
             Indexes = table.Indexes
         };
 
         foreach (var col in table.Columns)
         {
-            // Filter constraints: remove ConstraintType.None
             var cleanConstraints = new ColumnConstraint
             {
                 Constraints = col.Constraint.Constraints & ~ConstraintType.None,
@@ -167,4 +180,34 @@ class BinaryStorageManager
 
         return newTable;
     }
+
+    private static Dictionary<string, object> DeserializeRow(Dictionary<string, string> rawRow, List<Column> columns)
+    {
+        var deserialized = new Dictionary<string, object>();
+
+        foreach (var column in columns)
+        {
+            string rawValue = rawRow[column.Name];
+            object typedValue = rawValue;
+
+            if (column.Data_Type == "bool")
+            {
+                typedValue = bool.Parse(rawValue);
+            }
+            else if (column.Data_Type == "int")
+            {
+                typedValue = int.Parse(rawValue);
+            }
+            else if (column.Data_Type == "float")
+            {
+                typedValue = float.Parse(rawValue);
+            }
+            // Add more types as needed
+
+            deserialized[column.Name] = typedValue;
+        }
+
+        return deserialized;
+    }
+
 }

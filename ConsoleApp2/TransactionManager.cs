@@ -68,7 +68,7 @@ namespace ConsoleApp1
 
 
         public void LogOperation(Guid transactionId, string operation, string tableName,
-    List<Dictionary<string, string>> before, List<Dictionary<string, string>> after, Database db)
+     List<Dictionary<string, string>> before, List<Dictionary<string, string>> after, Database db)
         {
             Transaction transaction;
 
@@ -103,7 +103,6 @@ namespace ConsoleApp1
             var pkCol = table.Columns.First(c => c.Constraint.Has(ConstraintType.PrimaryKey));
             var alreadyLocked = new HashSet<int>();
 
-            // Handle the 'before' operation
             if (before != null)
             {
                 foreach (var row in before)
@@ -113,18 +112,14 @@ namespace ConsoleApp1
                     if (index == -1)
                         throw new Exception($"Row with {pkCol.Name} = {pkVal} not found.");
 
+                    // ✅ Check if the row has been deleted by another transaction
+                    if (concurrencyControl.IsRowDeleted(tableName, index, transactionId))
+                        throw new Exception($"Row with {pkCol.Name} = {pkVal} is deleted by another transaction.");
+
                     if (!alreadyLocked.Contains(index))
                     {
-                        // If the row is being updated or deleted, acquire a write lock
-                        if (operation == "update" || operation == "delete")
-                        {
+                        if (operation is "update" or "delete")
                             concurrencyControl.AcquireWriteLock(tableName, index, transactionId);
-                        }
-                        else
-                        {
-                            // If no write lock, acquire an upgradeable read lock
-                            concurrencyControl.AcquireUpgradeableReadLock(tableName, index, transactionId);
-                        }
 
                         alreadyLocked.Add(index);
                     }
@@ -135,7 +130,6 @@ namespace ConsoleApp1
                 }
             }
 
-            // Handle the 'after' operation
             if (after != null)
             {
                 foreach (var row in after)
@@ -143,19 +137,13 @@ namespace ConsoleApp1
                     string pkVal = row[pkCol.Name];
                     int index = table.Rows.FindIndex(r => r[pkCol.Name] == pkVal);
 
+                    // ✅ Check if row has been deleted by another transaction
+                    if (index != -1 && concurrencyControl.IsRowDeleted(tableName, index, transactionId))
+                        throw new Exception($"Row with {pkCol.Name} = {pkVal} is deleted by another transaction.");
+
                     if (!alreadyLocked.Contains(index))
                     {
-                        // If the row is being updated or inserted, acquire a write lock
-                        if (operation == "insert" || operation == "update")
-                        {
-                            concurrencyControl.AcquireWriteLock(tableName, index, transactionId);
-                        }
-                        else
-                        {
-                            // If no write lock, acquire an upgradeable read lock
-                            concurrencyControl.AcquireUpgradeableReadLock(tableName, index, transactionId);
-                        }
-
+                        concurrencyControl.AcquireWriteLock(tableName, index, transactionId);
                         alreadyLocked.Add(index);
                     }
 
@@ -166,7 +154,6 @@ namespace ConsoleApp1
                 }
             }
 
-            // Log the operation with before and after states
             transaction.Operations.Add(new OperationLog
             {
                 Operation = operation,
@@ -287,6 +274,11 @@ namespace ConsoleApp1
             }
 
             transaction.Operations.Reverse();
+            // Release locks and cleanup first
+            concurrencyControl.ReleaseLocks(transactionId);
+            Console.WriteLine($"Transaction {transactionId} released locks.");
+
+            // Then undo the operations (safe now that no one will read IsRowDeleted as true)
 
             foreach (var op in transaction.Operations)
             {
@@ -309,11 +301,17 @@ namespace ConsoleApp1
                 }
                 else if (op.Operation == "delete")
                 {
-                    foreach (var (idx, row) in op.Before)
+                    
+                    foreach (var (index, row) in op.Before)
                     {
-                        table.Rows.Insert(idx, row);
-                        table.UpdateIndexesForInsert(row); // ⬅️ Restore row to index
+                        var pkCol = table.Columns.First(c => c.Constraint.Has(ConstraintType.PrimaryKey)).Name;
+                        if (!table.Rows.Any(r => r[pkCol] == row[pkCol]))
+                        {
+                            table.Rows.Insert(index, new Dictionary<string, string>(row));
+                            table.UpdateIndexesForInsert(row);
+                        }
                     }
+
                 }
                 else if (op.Operation == "update")
                 {

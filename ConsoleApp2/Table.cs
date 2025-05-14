@@ -325,6 +325,7 @@ namespace ConsoleApp1
         // Delete a row from the table and cascade delete as necessary
         public void DeleteRow(string primaryKeyValue, TransactionManager tm, Guid? deletingTransactionId = null)
         {
+            
             if (ParentDatabase == null)
                 throw new Exception("Parent database reference is required for constraint validation.");
 
@@ -337,14 +338,16 @@ namespace ConsoleApp1
                 throw new Exception($"No row found with {primaryKeyColumn.Name} = {primaryKeyValue}");
 
             int rowIndex = Rows.FindIndex(r => r[primaryKeyColumn.Name] == primaryKeyValue);
-
-            // 🟢 If NOT in a transaction, delete immediately and apply cascading deletes
+           
+            // 🟢 If not inside a transaction
             if (deletingTransactionId == null || deletingTransactionId == Guid.Empty)
             {
+                
                 // Cascading delete
                 foreach (var childTable in ParentDatabase.Tables.Values)
                 {
                     foreach (var col in childTable.Columns)
+
                     {
                         if (col.Constraint.Has(ConstraintType.ForeignKey) &&
                             col.Constraint.ReferenceTable == Name &&
@@ -356,10 +359,8 @@ namespace ConsoleApp1
 
                             foreach (var childRow in childRowsToDelete)
                             {
-                                string childPk = childTable.Columns
-                                    .First(c => c.Constraint.Has(ConstraintType.PrimaryKey)).Name;
-
-                                childTable.DeleteRow(childRow[childPk], tm, null);  // Pass null again
+                                var childPk = childTable.Columns.First(c => c.Constraint.Has(ConstraintType.PrimaryKey)).Name;
+                                childTable.DeleteRow(childRow[childPk], tm, null);
                                 Console.WriteLine($"Cascading delete: Immediately deleted from '{childTable.Name}' where '{col.Name}' = {primaryKeyValue}");
                             }
                         }
@@ -377,78 +378,91 @@ namespace ConsoleApp1
                     }
                 }
 
-                // Remove the row directly
+                // Final removal
                 Rows.Remove(rowToDelete);
                 Console.WriteLine("Row deleted immediately (no transaction).");
                 return;
             }
 
-
-            // 🔁 Perform stack-based delete (to avoid recursion)
+            // 🔁 Stack-based cascading delete with lock-safe behavior
             var deleteQueue = new Stack<(Table table, string pkValue)>();
+            var affectedRows = new List<(Table table, int rowIdx, Dictionary<string, string> rowCopy)>();
+
             deleteQueue.Push((this, primaryKeyValue));
 
             while (deleteQueue.Count > 0)
             {
                 var (currentTable, currentPkVal) = deleteQueue.Pop();
-                var currentPrimaryKey = currentTable.Columns.First(c => c.Constraint.Has(ConstraintType.PrimaryKey)).Name;
-                var rowToDel = currentTable.Rows.FirstOrDefault(r => r[currentPrimaryKey] == currentPkVal);
-                if (rowToDel == null) continue;
-                var rowIdx = currentTable.Rows.FindIndex(r => r[currentPrimaryKey] == currentPkVal);
+                var currentPkCol = currentTable.Columns.First(c => c.Constraint.Has(ConstraintType.PrimaryKey)).Name;
+                var currentRow = currentTable.Rows.FirstOrDefault(r => r[currentPkCol] == currentPkVal);
+                if (currentRow == null) continue;
 
-                // Locking for transaction
-                foreach (var kvp in tm.GetAllTransactions())
-                {
-                    var txId = kvp.Key;
-                    var tx = kvp.Value;
-                    if (tx.IsActive && txId != deletingTransactionId)
-                    {
-                        tm.concurrencyControl.AcquireReadLock(currentTable.Name, rowIdx, txId);
-                    }
-                }
+                int currentRowIdx = currentTable.Rows.FindIndex(r => r[currentPkCol] == currentPkVal);
+                if (currentRowIdx == -1) continue;
 
-                // Add children to delete queue
-                foreach (var child in currentTable.ParentDatabase.Tables.Values)
+                // Defer concurrency and lock checks until after row discovery
+                affectedRows.Add((currentTable, currentRowIdx, new Dictionary<string, string>(currentRow)));
+
+                // Enqueue children to delete
+                foreach (var childTable in currentTable.ParentDatabase.Tables.Values)
                 {
-                    foreach (var col in child.Columns)
+                    foreach (var col in childTable.Columns)
                     {
                         if (col.Constraint.Has(ConstraintType.ForeignKey) &&
                             col.Constraint.ReferenceTable == currentTable.Name &&
-                            col.Constraint.ReferenceColumn == currentPrimaryKey)
+                            col.Constraint.ReferenceColumn == currentPkCol)
                         {
-                            var matchingChildRows = child.Rows
+                            var childRows = childTable.Rows
                                 .Where(r => r.ContainsKey(col.Name) && r[col.Name] == currentPkVal)
                                 .ToList();
 
-                            foreach (var cr in matchingChildRows)
+                            foreach (var cr in childRows)
                             {
-                                var childPk = child.Columns.First(c => c.Constraint.Has(ConstraintType.PrimaryKey)).Name;
-                                deleteQueue.Push((child, cr[childPk]));
-                                Console.WriteLine($"Cascading delete: Deferred delete for '{child.Name}' where '{col.Name}' = {currentPkVal}");
+                                var childPk = childTable.Columns.First(c => c.Constraint.Has(ConstraintType.PrimaryKey)).Name;
+                                deleteQueue.Push((childTable, cr[childPk]));
+                                Console.WriteLine($"Cascading delete: Deferred delete for '{childTable.Name}' where '{col.Name}' = {currentPkVal}");
                             }
                         }
                     }
                 }
+            }
 
-                // Log delete
-                var beforeData = new List<Dictionary<string, string>> { new(rowToDel) };
-                tm.LogOperation(deletingTransactionId.Value, "delete", currentTable.Name, beforeData, null, currentTable.ParentDatabase);
-                tm.concurrencyControl.MarkRowAsDeleted(currentTable.Name, rowIdx, deletingTransactionId.Value);
+            // 🔒 Acquire locks in deterministic order (by table name, then row index)
+            var lockOrder = affectedRows.OrderBy(t => t.table.Name).ThenBy(t => t.rowIdx).ToList();
 
-                
-                // Remove from indexes
-                foreach (var index in currentTable.Indexes.Values)
+            foreach (var (table, rowIdx, _) in lockOrder)
+            {
+                try
                 {
-                    var indexColumn = index.ColumnName;
-                    if (rowToDel.ContainsKey(indexColumn))
-                    {
-                        var key = (IComparable)rowToDel[indexColumn];
-                        index.RemoveFromIndex(key, rowToDel);
-                    }
+                    tm.concurrencyControl.AcquireWriteLock(table.Name, rowIdx, deletingTransactionId.Value);
                 }
+                catch (TimeoutException ex)
+                {
+                    Console.WriteLine($"Timeout acquiring lock on {table.Name}[{rowIdx}]: {ex.Message}");
+                    throw;
+                }
+            }
 
+            // 🔧 Perform deletion and log
+            foreach (var (table, rowIdx, rowData) in lockOrder)
+            {
+                tm.LogOperation(deletingTransactionId.Value, "delete", table.Name,
+                    new List<Dictionary<string, string>> { rowData }, null, table.ParentDatabase);
 
-                Console.WriteLine($"Deferred delete logged for {currentTable.Name} where {currentPrimaryKey} = {currentPkVal}");
+                tm.concurrencyControl.MarkRowAsDeleted(table.Name, rowIdx, deletingTransactionId.Value);
+
+                // Remove from indexes
+                //foreach (var index in table.Indexes.Values)
+                //{
+                //    var indexColumn = index.ColumnName;
+                //    if (rowData.ContainsKey(indexColumn))
+                //    {
+                //        var key = (IComparable)rowData[indexColumn];
+                //        index.RemoveFromIndex(key, rowData);
+                //    }
+                //}
+
+                Console.WriteLine($"Deferred delete logged for {table.Name} where {table.Columns.First(c => c.Constraint.Has(ConstraintType.PrimaryKey)).Name} = {rowData[table.Columns.First(c => c.Constraint.Has(ConstraintType.PrimaryKey)).Name]}");
             }
         }
 

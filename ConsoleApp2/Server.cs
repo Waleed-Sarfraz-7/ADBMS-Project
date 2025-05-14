@@ -36,6 +36,27 @@ class Server
 
         var qp = new QueryProcessor(tm, dbms);
         string? selectedDatabase = null;
+        //Random rand = new Random();
+        //string[] sampleNames = new[] { "Ali", "Bob", "Charlie", "Diana", "Eva", "Frank", "Grace", "Hassan" };
+        //int targetCount = 50000;
+        //int startingId = 7; // since your XML ends at id=6
+        //var database = dbms.Databases["School"];
+        //for (int i = startingId; i <= targetCount; i++)
+        //{
+        //    var id = i.ToString();
+        //    var name = sampleNames[rand.Next(sampleNames.Length)]; // ensures repeats
+        //    var dept_id = rand.Next(103, 105).ToString();
+
+        //    var row = new Dictionary<string, string>
+        //{
+        //    { "id", id },
+        //    { "name", name },
+        //    { "dept_id", dept_id }
+        //};
+
+        //    database.Tables["Students"].InsertRow(row); // or use whatever row-adding method you have
+        //}
+
 
         try
         {
